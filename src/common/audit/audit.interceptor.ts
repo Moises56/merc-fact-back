@@ -22,7 +22,8 @@ export class AuditInterceptor implements NestInterceptor {
   constructor(
     private readonly auditService: AuditService,
     private readonly reflector: Reflector,
-  ) {}  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+  ) {}
+  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const auditOptions = this.reflector.get<AuditLogOptions>(
       AUDIT_LOG,
       context.getHandler(),
@@ -32,12 +33,11 @@ export class AuditInterceptor implements NestInterceptor {
       return next.handle();
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const request = context.switchToHttp().getRequest() as any;
+    const request = context.switchToHttp().getRequest();
     const { user, body, params, method, ip, headers } = request;
 
     // Capturar datos antes de la operación
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const beforeData = method === 'PUT' || method === 'PATCH' ? body : null;
 
     return next.handle().pipe(
@@ -55,7 +55,7 @@ export class AuditInterceptor implements NestInterceptor {
             headers?.['user-agent'] as string,
           );
         },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         error: (error: any) => {
           // Log de error
           this.logAuditAction(

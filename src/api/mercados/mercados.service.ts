@@ -18,7 +18,11 @@ export class MercadosService {
     });
 
     if (existingMercado) {
-      throw new ConflictException('Ya existe un mercado con ese nombre');
+      throw new ConflictException({
+        message: 'No se puede crear el mercado',
+        error: 'Ya existe un mercado con ese nombre',
+        statusCode: 409,
+      });
     }
 
     const mercado = await this.prisma.mercado.create({
@@ -47,12 +51,16 @@ export class MercadosService {
       },
     });
 
-    return mercado;
+    return {
+      message: 'Mercado creado exitosamente',
+      data: mercado,
+    };
   }
-  async findAll(page: number = 1, limit: number = 10, isActive?: boolean) {
+  async findAll(page: number = 1, limit: number = 10, activo?: boolean) {
     const skip = (page - 1) * limit;
 
-    const where = isActive !== undefined ? { isActive } : {};
+    // Transform activo parameter to isActive for Prisma query
+    const where = activo !== undefined ? { isActive: activo } : {};
 
     const [mercados, total] = await Promise.all([
       this.prisma.mercado.findMany({
@@ -115,7 +123,11 @@ export class MercadosService {
     });
 
     if (!mercado) {
-      throw new NotFoundException('Mercado no encontrado');
+      throw new NotFoundException({
+        message: 'Mercado no encontrado',
+        error: 'El mercado solicitado no existe en el sistema',
+        statusCode: 404,
+      });
     }
 
     return mercado;
@@ -133,15 +145,24 @@ export class MercadosService {
           ],
         },
       });
-
       if (existingMercado) {
-        throw new ConflictException('Ya existe un mercado con ese nombre');
+        throw new ConflictException({
+          message: 'No se puede actualizar el mercado',
+          error: 'Ya existe un mercado con ese nombre',
+          statusCode: 409,
+        });
       }
     }
 
+    // Transform activo field to isActive for Prisma
+    const { activo, ...restData } = updateMercadoDto;
+    const prismaData = {
+      ...restData,
+      ...(activo !== undefined && { isActive: activo }),
+    };
     const updatedMercado = await this.prisma.mercado.update({
       where: { id },
-      data: updateMercadoDto,
+      data: prismaData,
       include: {
         _count: {
           select: {
@@ -150,7 +171,11 @@ export class MercadosService {
         },
       },
     });
-    return updatedMercado;
+
+    return {
+      message: 'Mercado actualizado exitosamente',
+      data: updatedMercado,
+    };
   }
 
   async remove(id: string) {
@@ -163,27 +188,36 @@ export class MercadosService {
         estado_local: 'OCUPADO',
       },
     });
-
     if (activeLocales > 0) {
-      throw new ConflictException(
-        'No se puede eliminar un mercado con locales ocupados',
-      );
-    } // Soft delete - set isActive to false
+      throw new ConflictException({
+        message: 'No se puede desactivar el mercado',
+        error: `El mercado tiene ${activeLocales} locales ocupados. Debe liberar todos los locales antes de desactivarlo`,
+        statusCode: 409,
+      });
+    }
+
+    // Soft delete - set isActive to false
     await this.prisma.mercado.update({
       where: { id },
       data: { isActive: false },
     });
 
-    return { message: 'Mercado desactivado exitosamente' };
+    return {
+      message: 'Mercado desactivado exitosamente',
+      data: { id, isActive: false },
+    };
   }
-
   async activate(id: string) {
     const mercado = await this.prisma.mercado.findUnique({
       where: { id },
     });
 
     if (!mercado) {
-      throw new NotFoundException('Mercado no encontrado');
+      throw new NotFoundException({
+        message: 'Mercado no encontrado',
+        error: 'El mercado solicitado no existe en el sistema',
+        statusCode: 404,
+      });
     }
 
     await this.prisma.mercado.update({
@@ -191,7 +225,10 @@ export class MercadosService {
       data: { isActive: true },
     });
 
-    return { message: 'Mercado activado exitosamente' };
+    return {
+      message: 'Mercado activado exitosamente',
+      data: { id, isActive: true },
+    };
   }
   async getMercadoStats() {
     const totalMercados = await this.prisma.mercado.count({

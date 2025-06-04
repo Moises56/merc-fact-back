@@ -39,25 +39,60 @@ export class LocalesController {
   @ApiOperation({ summary: 'Crear un nuevo local comercial' })
   @ApiResponse({ status: 201, description: 'Local creado exitosamente' })
   @ApiResponse({ status: 400, description: 'Datos inválidos' })
-  @ApiResponse({ status: 409, description: 'Ya existe un local con ese número o permiso' })
+  @ApiResponse({
+    status: 409,
+    description: 'Ya existe un local con ese número o permiso',
+  })
   create(@Body() createLocaleDto: CreateLocaleDto) {
     return this.localesService.create(createLocaleDto);
   }
 
   @Get()
   @Roles(Role.ADMIN, Role.MARKET, Role.USER)
-  @ApiOperation({ summary: 'Obtener lista de locales con paginación y filtros' })
-  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Número de página' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Elementos por página' })
-  @ApiQuery({ name: 'estado', required: false, enum: EstadoLocal, description: 'Filtrar por estado' })
-  @ApiQuery({ name: 'tipo', required: false, enum: TipoLocal, description: 'Filtrar por tipo' })
-  @ApiQuery({ name: 'mercadoId', required: false, type: String, description: 'Filtrar por mercado' })
-  @ApiResponse({ status: 200, description: 'Lista de locales obtenida exitosamente' })
+  @ApiOperation({
+    summary: 'Obtener lista de locales con paginación y filtros',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Número de página',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Elementos por página',
+  })
+  @ApiQuery({
+    name: 'estado',
+    required: false,
+    enum: EstadoLocal,
+    description: 'Filtrar por estado',
+  })
+  @ApiQuery({
+    name: 'tipo',
+    required: false,
+    enum: TipoLocal,
+    description: 'Filtrar por tipo',
+  })
+  @ApiQuery({
+    name: 'mercadoId',
+    required: false,
+    type: String,
+    description: 'Filtrar por mercado',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de locales obtenida exitosamente',
+  })
   findAll(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
-    @Query('estado', new ParseEnumPipe(EstadoLocal, { optional: true })) estado?: EstadoLocal,
-    @Query('tipo', new ParseEnumPipe(TipoLocal, { optional: true })) tipo?: TipoLocal,
+    @Query('estado', new ParseEnumPipe(EstadoLocal, { optional: true }))
+    estado?: EstadoLocal,
+    @Query('tipo', new ParseEnumPipe(TipoLocal, { optional: true }))
+    tipo?: TipoLocal,
     @Query('mercadoId') mercadoId?: string,
   ) {
     return this.localesService.findAll(page, limit, estado, tipo, mercadoId);
@@ -66,7 +101,10 @@ export class LocalesController {
   @Get('stats')
   @Roles(Role.ADMIN, Role.MARKET)
   @ApiOperation({ summary: 'Obtener estadísticas de locales' })
-  @ApiResponse({ status: 200, description: 'Estadísticas obtenidas exitosamente' })
+  @ApiResponse({
+    status: 200,
+    description: 'Estadísticas obtenidas exitosamente',
+  })
   getStats() {
     return this.localesService.getLocalStats();
   }
@@ -83,9 +121,22 @@ export class LocalesController {
   @Get(':id/facturas')
   @Roles(Role.ADMIN, Role.MARKET, Role.USER)
   @ApiOperation({ summary: 'Obtener facturas de un local específico' })
-  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Número de página' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Elementos por página' })
-  @ApiResponse({ status: 200, description: 'Facturas del local obtenidas exitosamente' })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Número de página',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Elementos por página',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Facturas del local obtenidas exitosamente',
+  })
   @ApiResponse({ status: 404, description: 'Local no encontrado' })
   getFacturas(
     @Param('id') id: string,
@@ -100,7 +151,10 @@ export class LocalesController {
   @ApiOperation({ summary: 'Actualizar un local' })
   @ApiResponse({ status: 200, description: 'Local actualizado exitosamente' })
   @ApiResponse({ status: 404, description: 'Local no encontrado' })
-  @ApiResponse({ status: 409, description: 'Conflicto con número de local o permiso' })
+  @ApiResponse({
+    status: 409,
+    description: 'Conflicto con número de local o permiso',
+  })
   update(@Param('id') id: string, @Body() updateLocaleDto: UpdateLocalDto) {
     return this.localesService.update(id, updateLocaleDto);
   }
@@ -137,7 +191,10 @@ export class LocalesController {
   @ApiOperation({ summary: 'Eliminar un local' })
   @ApiResponse({ status: 200, description: 'Local eliminado exitosamente' })
   @ApiResponse({ status: 404, description: 'Local no encontrado' })
-  @ApiResponse({ status: 409, description: 'No se puede eliminar: tiene facturas asociadas' })
+  @ApiResponse({
+    status: 409,
+    description: 'No se puede eliminar: tiene facturas asociadas',
+  })
   remove(@Param('id') id: string) {
     return this.localesService.remove(id);
   }

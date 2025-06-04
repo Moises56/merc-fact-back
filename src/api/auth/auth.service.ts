@@ -23,12 +23,27 @@ export class AuthService {
   ) {}
 
   async login(loginDto: LoginDto): Promise<AuthResponse> {
-    const user = await this.prisma.user.findUnique({
-      where: { correo: loginDto.correo },
-    });
+    // Build where condition for email or username
+    const whereCondition = loginDto.correo
+      ? { correo: loginDto.correo }
+      : { username: loginDto.username! };
 
-    if (!user || !user.isActive) {
-      throw new UnauthorizedException('Credenciales inválidas');
+    const user = await this.prisma.user.findUnique({
+      where: whereCondition,
+    });
+    if (!user) {
+      const identifier = loginDto.correo
+        ? 'correo electrónico'
+        : 'nombre de usuario';
+      throw new UnauthorizedException(
+        `Usuario no encontrado con el ${identifier} proporcionado`,
+      );
+    }
+
+    if (!user.isActive) {
+      throw new UnauthorizedException(
+        'Cuenta desactivada. Contacte al administrador',
+      );
     }
 
     const isPasswordValid = await bcrypt.compare(
@@ -36,7 +51,7 @@ export class AuthService {
       user.contrasena,
     );
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Credenciales inválidas');
+      throw new UnauthorizedException('Contraseña incorrecta');
     }
 
     // Update last login
@@ -61,6 +76,7 @@ export class AuthService {
       user: {
         id: user.id,
         correo: user.correo,
+        username: user.username,
         nombre: user.nombre,
         apellido: user.apellido,
         role: user.role as any,
@@ -129,30 +145,29 @@ export class AuthService {
       where: { id: userId },
       data: { contrasena: hashedPassword },
     });
-
     return { message: 'Contraseña actualizada exitosamente' };
   }
+
   async validateUser(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
         id: true,
         correo: true,
+        username: true,
         nombre: true,
         apellido: true,
         role: true,
         isActive: true,
       },
     });
-
     if (!user || !user.isActive) {
       return null;
     }
 
     return user;
   }
-
-  async logout() {
+  logout() {
     return { message: 'Sesión cerrada exitosamente' };
   }
 }

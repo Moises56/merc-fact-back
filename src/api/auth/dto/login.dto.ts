@@ -1,20 +1,32 @@
-import { IsEmail, IsString, MinLength } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsString, MinLength, IsOptional, ValidateIf } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class LoginDto {
-  @ApiProperty({
-    description: 'Correo electrónico del usuario',
+  @ApiPropertyOptional({
+    description:
+      'Correo electrónico del usuario (requerido si no se proporciona username)',
     example: 'mougrind@amdc.hn',
   })
-  @IsEmail({}, { message: 'Debe ser un correo electrónico válido' })
-  correo: string;
+  @IsString({ message: 'El correo debe ser una cadena de texto' })
+  @IsOptional()
+  @ValidateIf((o) => !o.username)
+  correo?: string;
+
+  @ApiPropertyOptional({
+    description: 'Nombre de usuario (requerido si no se proporciona correo)',
+    example: 'mougrind',
+  })
+  @IsString({ message: 'El username debe ser una cadena de texto' })
+  @IsOptional()
+  @ValidateIf((o) => !o.correo)
+  username?: string;
 
   @ApiProperty({
     description: 'Contraseña del usuario',
     example: 'Asd.456@',
     minLength: 6,
   })
-  @IsString()
+  @IsString({ message: 'La contraseña debe ser una cadena de texto' })
   @MinLength(6, { message: 'La contraseña debe tener al menos 6 caracteres' })
   contrasena: string;
 }
@@ -38,10 +50,12 @@ export class ChangePasswordDto {
 
   @ApiProperty({
     description: 'Nueva contraseña',
-    example: 'Asd.456@@',
+    example: 'NewPassword123@',
     minLength: 6,
   })
   @IsString()
-  @MinLength(6, { message: 'La contraseña debe tener al menos 6 caracteres' })
+  @MinLength(6, {
+    message: 'La nueva contraseña debe tener al menos 6 caracteres',
+  })
   newPassword: string;
 }

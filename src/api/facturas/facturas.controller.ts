@@ -41,7 +41,10 @@ export class FacturasController {
   @ApiOperation({ summary: 'Crear una nueva factura' })
   @ApiResponse({ status: 201, description: 'Factura creada exitosamente' })
   @ApiResponse({ status: 400, description: 'Datos inválidos' })
-  @ApiResponse({ status: 409, description: 'Ya existe una factura para este local/mes/año' })
+  @ApiResponse({
+    status: 409,
+    description: 'Ya existe una factura para este local/mes/año',
+  })
   create(@Body() createFacturaDto: CreateFacturaDto, @GetUser() user: User) {
     return this.facturasService.create({
       ...createFacturaDto,
@@ -52,26 +55,64 @@ export class FacturasController {
   @Get()
   @Roles(Role.ADMIN, Role.MARKET, Role.USER)
   @ApiOperation({ summary: 'Obtener lista de facturas con paginación' })
-  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Número de página' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Elementos por página' })
-  @ApiQuery({ name: 'estado', required: false, enum: EstadoFactura, description: 'Filtrar por estado' })
-  @ApiQuery({ name: 'localId', required: false, type: String, description: 'Filtrar por local' })
-  @ApiQuery({ name: 'mercadoId', required: false, type: String, description: 'Filtrar por mercado' })
-  @ApiResponse({ status: 200, description: 'Lista de facturas obtenida exitosamente' })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Número de página',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Elementos por página',
+  })
+  @ApiQuery({
+    name: 'estado',
+    required: false,
+    enum: EstadoFactura,
+    description: 'Filtrar por estado',
+  })
+  @ApiQuery({
+    name: 'localId',
+    required: false,
+    type: String,
+    description: 'Filtrar por local',
+  })
+  @ApiQuery({
+    name: 'mercadoId',
+    required: false,
+    type: String,
+    description: 'Filtrar por mercado',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de facturas obtenida exitosamente',
+  })
   findAll(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
-    @Query('estado', new ParseEnumPipe(EstadoFactura, { optional: true })) estado?: EstadoFactura,
+    @Query('estado', new ParseEnumPipe(EstadoFactura, { optional: true }))
+    estado?: EstadoFactura,
     @Query('localId') localId?: string,
     @Query('mercadoId') mercadoId?: string,
   ) {
-    return this.facturasService.findAll(page, limit, estado, localId, mercadoId);
+    return this.facturasService.findAll(
+      page,
+      limit,
+      estado,
+      localId,
+      mercadoId,
+    );
   }
 
   @Get('stats')
   @Roles(Role.ADMIN, Role.MARKET)
   @ApiOperation({ summary: 'Obtener estadísticas de facturas' })
-  @ApiResponse({ status: 200, description: 'Estadísticas obtenidas exitosamente' })
+  @ApiResponse({
+    status: 200,
+    description: 'Estadísticas obtenidas exitosamente',
+  })
   getStats() {
     return this.facturasService.getFacturaStats();
   }
@@ -108,8 +149,14 @@ export class FacturasController {
   @Roles(Role.ADMIN, Role.MARKET)
   @ApiOperation({ summary: 'Generar facturas masivas para un mercado' })
   @ApiResponse({ status: 201, description: 'Facturas generadas exitosamente' })
-  @ApiResponse({ status: 400, description: 'No hay locales activos en el mercado' })
-  @ApiResponse({ status: 409, description: 'Ya existen facturas para el período especificado' })
+  @ApiResponse({
+    status: 400,
+    description: 'No hay locales activos en el mercado',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Ya existen facturas para el período especificado',
+  })
   generateMassiveInvoices(
     @Body() data: { mercadoId: string; mes: string; anio: number },
     @GetUser() user: User,

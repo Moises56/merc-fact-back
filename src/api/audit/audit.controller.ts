@@ -18,9 +18,9 @@ import {
 } from '@nestjs/swagger';
 import { AuditService } from './audit.service';
 import { CreateAuditDto } from './dto/create-audit.dto';
-import { JwtAuthGuard } from '../../auth/jwt-auth/jwt-auth.guard';
-import { RolesGuard } from '../../auth/roles/roles.guard';
-import { Roles } from '../../auth/roles/roles.decorator';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
 
 @ApiTags('audit')
@@ -38,7 +38,8 @@ export class AuditController {
     description: 'Registro de auditoría creado exitosamente',
   })
   @ApiResponse({ status: 400, description: 'Datos inválidos' })
-  @ApiResponse({ status: 403, description: 'Acceso denegado' })  async create(@Body() createAuditDto: CreateAuditDto) {
+  @ApiResponse({ status: 403, description: 'Acceso denegado' })
+  async create(@Body() createAuditDto: CreateAuditDto) {
     try {
       return await this.auditService.create(createAuditDto);
     } catch (_error) {
@@ -62,7 +63,8 @@ export class AuditController {
   @ApiQuery({ name: 'tabla', required: false, type: String })
   @ApiQuery({ name: 'userId', required: false, type: String })
   @ApiQuery({ name: 'startDate', required: false, type: String })
-  @ApiQuery({ name: 'endDate', required: false, type: String })  async findAll(
+  @ApiQuery({ name: 'endDate', required: false, type: String })
+  async findAll(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('accion') accion?: string,
@@ -100,7 +102,8 @@ export class AuditController {
   @ApiResponse({
     status: 200,
     description: 'Estadísticas de auditoría',
-  })  async getStats() {
+  })
+  async getStats() {
     try {
       return await this.auditService.getAuditStats();
     } catch (_error) {
@@ -119,7 +122,8 @@ export class AuditController {
     description: 'Registros de auditoría del usuario',
   })
   @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })  async findByUser(
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  async findByUser(
     @Param('userId') userId: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,

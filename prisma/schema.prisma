@@ -19,6 +19,7 @@ datasource db {
 model User {
   id              String   @id @default(uuid())
   correo          String   @unique
+  username        String   @unique
   nombre          String
   apellido        String
   contrasena      String
@@ -59,16 +60,16 @@ model Mercado {
 }
 
 model Local {
-  id                String  @id @default(uuid())
-  nombre_local      String
-  numero_local      String  @unique
-  permiso_operacion String  @unique
-  tipo_local        String  // Usar String en lugar de enum
-  direccion_local   String
-  estado_local      String  @default("PENDIENTE") // Usar String en lugar de enum
-  monto_mensual     Decimal @db.Decimal(10, 2)
-  propietario       String
-  dni_propietario   String
+  id                String   @id @default(uuid())
+  nombre_local      String?
+  numero_local      String?  @unique
+  permiso_operacion String?  @unique
+  tipo_local        String?  // Usar String en lugar de enum
+  direccion_local   String?
+  estado_local      String   @default("PENDIENTE") // Usar String en lugar de enum
+  monto_mensual     Decimal? @db.Decimal(10, 2)
+  propietario       String?
+  dni_propietario   String?
   telefono          String?
   email             String?
   latitud           Float?
@@ -100,10 +101,10 @@ model Factura {
   
   // Información del local (desnormalizada para histórico)
   mercado_nombre    String
-  local_nombre      String
-  local_numero      String
-  propietario_nombre String
-  propietario_dni   String
+  local_nombre      String?
+  local_numero      String?
+  propietario_nombre String?
+  propietario_dni   String?
   
   // Relaciones
   localId           String

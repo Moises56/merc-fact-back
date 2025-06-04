@@ -11,7 +11,6 @@ import { EstadoLocal, TipoLocal } from '../../common/enums';
 @Injectable()
 export class LocalesService {
   constructor(private prisma: PrismaService) {}
-
   async create(createLocaleDto: CreateLocaleDto) {
     // Verificar que el mercado existe
     const mercado = await this.prisma.mercado.findUnique({
@@ -20,26 +19,36 @@ export class LocalesService {
 
     if (!mercado) {
       throw new NotFoundException('Mercado no encontrado');
+    }    // Verificar que el número de local y permiso de operación sean únicos (solo si se proporcionan)
+    const uniqueConstraints: Array<{ numero_local?: string } | { permiso_operacion?: string }> = [];
+    if (createLocaleDto.numero_local) {
+      uniqueConstraints.push({ numero_local: createLocaleDto.numero_local });
+    }
+    if (createLocaleDto.permiso_operacion) {
+      uniqueConstraints.push({
+        permiso_operacion: createLocaleDto.permiso_operacion,
+      });
     }
 
-    // Verificar que el número de local y permiso de operación sean únicos
-    const existingLocal = await this.prisma.local.findFirst({
-      where: {
-        OR: [
-          { numero_local: createLocaleDto.numero_local },
-          { permiso_operacion: createLocaleDto.permiso_operacion },
-        ],
-      },
-    });
+    if (uniqueConstraints.length > 0) {
+      const existingLocal = await this.prisma.local.findFirst({
+        where: {
+          OR: uniqueConstraints,
+        },
+      });
 
-    if (existingLocal) {
-      throw new ConflictException(
-        'Ya existe un local con ese número o permiso de operación',
-      );
+      if (existingLocal) {
+        throw new ConflictException(
+          'Ya existe un local con ese número o permiso de operación',
+        );
+      }
     }
 
     const local = await this.prisma.local.create({
-      data: createLocaleDto,
+      data: {
+        ...createLocaleDto,
+        estado_local: createLocaleDto.estado_local || 'PENDIENTE',
+      },
       include: {
         mercado: true,
         _count: {
@@ -312,10 +321,11 @@ export class LocalesService {
       locales_activos: localesActivos,
       locales_inactivos: localesInactivos,
       locales_suspendidos: localesSuspendidos,
-      locales_pendientes: localesPendientes,
-      porcentaje_activos: totalLocales > 0 ? (localesActivos / totalLocales) * 100 : 0,
+      locales_pendientes: localesPendientes,      porcentaje_activos:
+        totalLocales > 0 ? (localesActivos / totalLocales) * 100 : 0,
       estadisticas_por_tipo: estadisticasPorTipo.reduce((acc, item) => {
-        acc[item.tipo_local] = item._count.id;
+        const tipoLocal = item.tipo_local || 'SIN_TIPO';
+        acc[tipoLocal] = item._count.id;
         return acc;
       }, {}),
       monto_promedio: promedioMonto._avg.monto_mensual || 0,

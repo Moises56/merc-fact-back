@@ -43,16 +43,16 @@ export class FacturasService {
 
     // Generar correlativo único
     const correlativo = await this.generateCorrelativo();
-
+    
     const factura = await this.prisma.factura.create({
       data: {
         ...createFacturaDto,
         correlativo,
         mercado_nombre: local.mercado.nombre_mercado,
-        local_nombre: local.nombre_local,
-        local_numero: local.numero_local,
-        propietario_nombre: local.propietario,
-        propietario_dni: local.dni_propietario,
+        local_nombre: local.nombre_local || 'Sin nombre',
+        local_numero: local.numero_local || 'Sin número',
+        propietario_nombre: local.propietario || 'Sin propietario',
+        propietario_dni: local.dni_propietario || 'Sin DNI',
       },
       include: {
         local: {
@@ -83,7 +83,13 @@ export class FacturasService {
   ) {
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const where: {
+      estado?: EstadoFactura;
+      localId?: string;
+      local?: {
+        mercadoId: string;
+      };
+    } = {};
 
     if (estado) {
       where.estado = estado;
@@ -276,14 +282,14 @@ export class FacturasService {
           concepto: `Cuota mensual ${mes}/${anio} - ${local.nombre_local}`,
           mes,
           anio,
-          monto: local.monto_mensual,
+          monto: local.monto_mensual || 0,
           estado: EstadoFactura.PENDIENTE,
           fecha_vencimiento: this.calculateDueDate(mes, anio),
           mercado_nombre: local.mercado.nombre_mercado,
-          local_nombre: local.nombre_local,
-          local_numero: local.numero_local,
-          propietario_nombre: local.propietario,
-          propietario_dni: local.dni_propietario,
+          local_nombre: local.nombre_local || 'Sin nombre',
+          local_numero: local.numero_local || 'Sin número',
+          propietario_nombre: local.propietario || 'Sin propietario',
+          propietario_dni: local.dni_propietario || 'Sin DNI',
           localId: local.id,
           createdByUserId,
           correlativo,
@@ -310,7 +316,7 @@ export class FacturasService {
       throw new NotFoundException('Factura no encontrada');
     }
 
-    if (factura.estado === EstadoFactura.PAGADA) {
+    if (factura.estado === 'PAGADA') {
       throw new BadRequestException('La factura ya está marcada como pagada');
     }
 
@@ -401,7 +407,7 @@ export class FacturasService {
 
   private calculateDueDate(mes: string, anio: number): Date {
     // Fecha de vencimiento: último día del mes siguiente
-    const [year, month] = mes.split('-').map(Number);
+    const [, month] = mes.split('-').map(Number);
     const nextMonth = month === 12 ? 1 : month + 1;
     const nextYear = month === 12 ? anio + 1 : anio;
 

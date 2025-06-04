@@ -1,0 +1,26 @@
+BEGIN TRY
+
+BEGIN TRAN;
+
+-- AlterTable
+ALTER TABLE [dbo].[locales] ALTER COLUMN [nombre_local] NVARCHAR(1000) NULL;
+ALTER TABLE [dbo].[locales] ALTER COLUMN [numero_local] NVARCHAR(1000) NULL;
+ALTER TABLE [dbo].[locales] ALTER COLUMN [permiso_operacion] NVARCHAR(1000) NULL;
+ALTER TABLE [dbo].[locales] ALTER COLUMN [tipo_local] NVARCHAR(1000) NULL;
+ALTER TABLE [dbo].[locales] ALTER COLUMN [direccion_local] NVARCHAR(1000) NULL;
+ALTER TABLE [dbo].[locales] ALTER COLUMN [monto_mensual] DECIMAL(10,2) NULL;
+ALTER TABLE [dbo].[locales] ALTER COLUMN [propietario] NVARCHAR(1000) NULL;
+ALTER TABLE [dbo].[locales] ALTER COLUMN [dni_propietario] NVARCHAR(1000) NULL;
+
+COMMIT TRAN;
+
+END TRY
+BEGIN CATCH
+
+IF @@TRANCOUNT > 0
+BEGIN
+    ROLLBACK TRAN;
+END;
+THROW
+
+END CATCH

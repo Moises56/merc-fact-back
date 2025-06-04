@@ -1,0 +1,22 @@
+BEGIN TRY
+
+BEGIN TRAN;
+
+-- AlterTable
+ALTER TABLE [dbo].[facturas] ALTER COLUMN [local_nombre] NVARCHAR(1000) NULL;
+ALTER TABLE [dbo].[facturas] ALTER COLUMN [local_numero] NVARCHAR(1000) NULL;
+ALTER TABLE [dbo].[facturas] ALTER COLUMN [propietario_nombre] NVARCHAR(1000) NULL;
+ALTER TABLE [dbo].[facturas] ALTER COLUMN [propietario_dni] NVARCHAR(1000) NULL;
+
+COMMIT TRAN;
+
+END TRY
+BEGIN CATCH
+
+IF @@TRANCOUNT > 0
+BEGIN
+    ROLLBACK TRAN;
+END;
+THROW
+
+END CATCH

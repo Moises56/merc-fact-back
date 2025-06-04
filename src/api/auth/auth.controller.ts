@@ -161,6 +161,7 @@ export class AuthController {
       user: {
         id: user.id,
         correo: user.correo,
+        username: user.username,
         nombre: user.nombre,
         apellido: user.apellido,
         role: user.role,

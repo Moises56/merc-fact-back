@@ -12,15 +12,20 @@ import * as bcrypt from 'bcryptjs';
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
+
   async create(createUserDto: CreateUserDto) {
     // Check if user already exists - validate unique fields
     const conditions: any[] = [
       { correo: createUserDto.correo },
+      { username: createUserDto.username },
       { dni: createUserDto.dni },
     ];
 
     // Add numero_empleado to validation if provided
-    if (createUserDto.numero_empleado !== undefined && createUserDto.numero_empleado !== null) {
+    if (
+      createUserDto.numero_empleado !== undefined &&
+      createUserDto.numero_empleado !== null
+    ) {
       conditions.push({ numero_empleado: createUserDto.numero_empleado });
     }
 
@@ -33,6 +38,9 @@ export class UsersService {
     if (existingUser) {
       if (existingUser.correo === createUserDto.correo) {
         throw new ConflictException('El correo electrónico ya está en uso');
+      }
+      if (existingUser.username === createUserDto.username) {
+        throw new ConflictException('El nombre de usuario ya está en uso');
       }
       if (existingUser.dni === createUserDto.dni) {
         throw new ConflictException('El DNI ya está registrado');
@@ -49,6 +57,7 @@ export class UsersService {
     const user = await this.prisma.user.create({
       data: {
         correo: createUserDto.correo,
+        username: createUserDto.username,
         nombre: createUserDto.nombre,
         apellido: createUserDto.apellido,
         contrasena: hashedPassword,
@@ -62,6 +71,7 @@ export class UsersService {
       select: {
         id: true,
         correo: true,
+        username: true,
         nombre: true,
         apellido: true,
         telefono: true,
@@ -91,6 +101,7 @@ export class UsersService {
         select: {
           id: true,
           correo: true,
+          username: true,
           nombre: true,
           apellido: true,
           telefono: true,
@@ -120,12 +131,14 @@ export class UsersService {
       },
     };
   }
+
   async findOne(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: {
         id: true,
         correo: true,
+        username: true,
         nombre: true,
         apellido: true,
         telefono: true,
@@ -151,20 +164,39 @@ export class UsersService {
     return this.prisma.user.findUnique({
       where: { correo },
     });
-  }  async update(id: string, updateUserDto: UpdateUserDto) {
+  }
+
+  async findByUsername(username: string) {
+    return this.prisma.user.findUnique({
+      where: { username },
+    });
+  }
+
+  async update(id: string, updateUserDto: UpdateUserDto) {
     await this.findOne(id);
 
-    // Check for conflicts if email, DNI, or numero_empleado is being updated
-    if (updateUserDto.correo || updateUserDto.dni || updateUserDto.numero_empleado !== undefined) {
+    // Check for conflicts if email, username, DNI, or numero_empleado is being updated
+    if (
+      updateUserDto.correo ||
+      updateUserDto.username ||
+      updateUserDto.dni ||
+      updateUserDto.numero_empleado !== undefined
+    ) {
       const conditions: any[] = [];
 
       if (updateUserDto.correo) {
         conditions.push({ correo: updateUserDto.correo });
       }
+      if (updateUserDto.username) {
+        conditions.push({ username: updateUserDto.username });
+      }
       if (updateUserDto.dni) {
         conditions.push({ dni: updateUserDto.dni });
       }
-      if (updateUserDto.numero_empleado !== undefined && updateUserDto.numero_empleado !== null) {
+      if (
+        updateUserDto.numero_empleado !== undefined &&
+        updateUserDto.numero_empleado !== null
+      ) {
         conditions.push({ numero_empleado: updateUserDto.numero_empleado });
       }
 
@@ -184,15 +216,22 @@ export class UsersService {
           if (existingUser.correo === updateUserDto.correo) {
             throw new ConflictException('El correo electrónico ya está en uso');
           }
+          if (existingUser.username === updateUserDto.username) {
+            throw new ConflictException('El nombre de usuario ya está en uso');
+          }
           if (existingUser.dni === updateUserDto.dni) {
             throw new ConflictException('El DNI ya está registrado');
           }
           if (existingUser.numero_empleado === updateUserDto.numero_empleado) {
-            throw new ConflictException('El número de empleado ya está registrado');
+            throw new ConflictException(
+              'El número de empleado ya está registrado',
+            );
           }
         }
       }
-    }// Hash password if provided
+    }
+
+    // Hash password if provided
     const updateData: Partial<UpdateUserDto> & { contrasena?: string } = {
       ...updateUserDto,
     };
@@ -206,6 +245,7 @@ export class UsersService {
       select: {
         id: true,
         correo: true,
+        username: true,
         nombre: true,
         apellido: true,
         telefono: true,

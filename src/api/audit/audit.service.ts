@@ -154,56 +154,51 @@ export class AuditService {
     };
   }
   async getAuditStats() {
-    const [
-      totalLogs,
-      logsToday,
-      logsByAction,
-      logsByTable,
-      mostActiveUsers,
-    ] = await Promise.all([
-      this.prisma.auditLog.count(),
-      this.prisma.auditLog.count({
-        where: {
-          createdAt: {
-            gte: new Date(new Date().setHours(0, 0, 0, 0)),
+    const [totalLogs, logsToday, logsByAction, logsByTable, mostActiveUsers] =
+      await Promise.all([
+        this.prisma.auditLog.count(),
+        this.prisma.auditLog.count({
+          where: {
+            createdAt: {
+              gte: new Date(new Date().setHours(0, 0, 0, 0)),
+            },
           },
-        },
-      }),
-      this.prisma.auditLog.groupBy({
-        by: ['accion'],
-        _count: {
-          id: true,
-        },
-        orderBy: {
+        }),
+        this.prisma.auditLog.groupBy({
+          by: ['accion'],
           _count: {
-            id: 'desc',
+            id: true,
           },
-        },
-      }),
-      this.prisma.auditLog.groupBy({
-        by: ['tabla'],
-        _count: {
-          id: true,
-        },
-        orderBy: {
+          orderBy: {
+            _count: {
+              id: 'desc',
+            },
+          },
+        }),
+        this.prisma.auditLog.groupBy({
+          by: ['tabla'],
           _count: {
-            id: 'desc',
+            id: true,
           },
-        },
-      }),
-      this.prisma.auditLog.groupBy({
-        by: ['userId'],
-        _count: {
-          id: true,
-        },
-        orderBy: {
+          orderBy: {
+            _count: {
+              id: 'desc',
+            },
+          },
+        }),
+        this.prisma.auditLog.groupBy({
+          by: ['userId'],
           _count: {
-            id: 'desc',
+            id: true,
           },
-        },
-        take: 5,
-      }),
-    ]);
+          orderBy: {
+            _count: {
+              id: 'desc',
+            },
+          },
+          take: 5,
+        }),
+      ]);
 
     // Obtener información de los usuarios más activos
     const userIds = mostActiveUsers.map((log) => log.userId);

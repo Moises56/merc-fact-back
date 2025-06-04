@@ -4,41 +4,46 @@ import { TipoLocal, EstadoLocal } from '../../../common/enums';
 import { Transform } from 'class-transformer';
 
 export class CreateLocaleDto {
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Nombre del local comercial',
     example: 'Carnicería La Esperanza',
   })
   @IsString()
-  nombre_local: string;
+  @IsOptional()
+  nombre_local?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Número del local',
     example: 'A-001',
   })
   @IsString()
-  numero_local: string;
+  @IsOptional()
+  numero_local?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Permiso de operación',
     example: 'PO-2024-001',
   })
   @IsString()
-  permiso_operacion: string;
+  @IsOptional()
+  permiso_operacion?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Tipo de local comercial',
     enum: TipoLocal,
     example: TipoLocal.COMIDA,
   })
   @IsEnum(TipoLocal, { message: 'Tipo de local debe ser válido' })
-  tipo_local: TipoLocal;
+  @IsOptional()
+  tipo_local?: TipoLocal;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Dirección específica del local',
     example: 'Pasillo A, Puesto 1',
   })
   @IsString()
-  direccion_local: string;
+  @IsOptional()
+  direccion_local?: string;
 
   @ApiPropertyOptional({
     description: 'Estado del local',
@@ -46,30 +51,32 @@ export class CreateLocaleDto {
     example: EstadoLocal.PENDIENTE,
   })
   @IsEnum(EstadoLocal, { message: 'Estado del local debe ser válido' })
-  @IsOptional()
-  estado_local?: EstadoLocal = EstadoLocal.PENDIENTE;
+  @IsOptional()  estado_local?: EstadoLocal = EstadoLocal.PENDIENTE;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Monto mensual a pagar',
     example: 150.0,
   })
-  @Transform(({ value }) => parseFloat(value))
+  @Transform(({ value }) => (value ? parseFloat(value as string) : undefined))
   @IsNumber()
-  monto_mensual: number;
+  @IsOptional()
+  monto_mensual?: number;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Nombre del propietario',
     example: 'María García',
   })
   @IsString()
-  propietario: string;
+  @IsOptional()
+  propietario?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'DNI del propietario',
     example: '87654321',
   })
   @IsString()
-  dni_propietario: string;
+  @IsOptional()
+  dni_propietario?: string;
 
   @ApiPropertyOptional({
     description: 'Teléfono de contacto',

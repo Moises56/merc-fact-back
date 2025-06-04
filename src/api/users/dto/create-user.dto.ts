@@ -79,4 +79,12 @@ export class CreateUserDto {
   @IsEnum(Role, { message: 'El rol debe ser USER, ADMIN o MARKET' })
   @IsOptional()
   role?: Role = Role.ADMIN;
+
+  @ApiProperty({
+    description: 'Nombre de usuario único',
+    example: 'mougrind',
+  })
+  @IsString({ message: 'El username debe ser una cadena de texto' })
+  @MinLength(3, { message: 'El username debe tener al menos 3 caracteres' })
+  username: string;
 }
