@@ -1,0 +1,56 @@
+import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { AppModule } from './app.module';
+import * as cookieParser from 'cookie-parser';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+
+  // Configuración global de validación
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  );
+
+  // Configuración de cookies
+  app.use(cookieParser());
+
+  // Configuración de CORS
+  app.enableCors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:3001',
+    credentials: true,
+  });
+
+  // Configuración de Swagger
+  const config = new DocumentBuilder()
+    .setTitle('Sistema de Gestión de Mercados')
+    .setDescription(
+      'API para la gestión de mercados municipales, locales comerciales y facturación',
+    )
+    .setVersion('1.0')
+    .addBearerAuth()
+    .addTag('auth', 'Autenticación y autorización')
+    .addTag('users', 'Gestión de usuarios')
+    .addTag('mercados', 'Gestión de mercados')
+    .addTag('locales', 'Gestión de locales comerciales')
+    .addTag('facturas', 'Gestión de facturas y facturación')
+    .addTag('audit', 'Auditoría del sistema')
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api', app, document);
+
+  const port = process.env.PORT ?? 3000;
+  await app.listen(port);
+
+  console.log(`🚀 Aplicación ejecutándose en: http://localhost:${port}`);
+  console.log(`📚 Documentación Swagger en: http://localhost:${port}/api`);
+}
+
+bootstrap().catch((error) =>
+  console.error('Error starting application:', error),
+);

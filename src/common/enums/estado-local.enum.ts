@@ -1,0 +1,8 @@
+export enum EstadoLocal {
+  ACTIVO = 'ACTIVO',
+  INACTIVO = 'INACTIVO',
+  SUSPENDIDO = 'SUSPENDIDO',
+  PENDIENTE = 'PENDIENTE',
+  OCUPADO = 'OCUPADO',
+  LIBRE = 'LIBRE',
+}
