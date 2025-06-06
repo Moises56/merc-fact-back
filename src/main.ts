@@ -15,17 +15,36 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
-
   // Configuración de cookies
   app.use(cookieParser()); // Configuración de CORS
   // Parse comma-separated origins from FRONTEND_URL
   const allowedOrigins = process.env.FRONTEND_URL
     ? process.env.FRONTEND_URL.split(',').map((origin) => origin.trim())
-    : ['http://localhost:3001'];
-
+    : ['http://localhost:4200', 'https://fact-amdc.netlify.app'];
   app.enableCors({
-    origin: allowedOrigins,
+    origin: function (origin, callback) {
+      // Permitir solicitudes sin origen (como aplicaciones móviles o curl)
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      // Verificar si el origen está permitido
+      if (
+        allowedOrigins.indexOf(origin) !== -1 ||
+        allowedOrigins.includes('*')
+      ) {
+        callback(null, true);
+      } else {
+        console.log(`Origen bloqueado: ${origin}`);
+        callback(null, false);
+      }
+    },
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+    allowedHeaders: 'Origin,X-Requested-With,Content-Type,Accept,Authorization',
   });
 
   // Configuración de Swagger
