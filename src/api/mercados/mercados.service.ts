@@ -223,13 +223,12 @@ export class MercadosService {
     await this.prisma.mercado.update({
       where: { id },
       data: { isActive: true },
-    });
-
-    return {
+    });    return {
       message: 'Mercado activado exitosamente',
       data: { id, isActive: true },
     };
   }
+
   async getMercadoStats() {
     const totalMercados = await this.prisma.mercado.count({
       where: { isActive: true },
@@ -247,7 +246,7 @@ export class MercadosService {
     });
 
     const totalLocales = mercadosWithLocales.reduce(
-      (sum: number, mercado: any) => sum + (mercado._count?.locales || 0),
+      (sum: number, mercado) => sum + (mercado._count?.locales || 0),
       0,
     );
 
@@ -268,5 +267,66 @@ export class MercadosService {
       ocupacion_percentage:
         totalLocales > 0 ? (ocupiedLocales / totalLocales) * 100 : 0,
     };
+  }
+  async getLocalesByMercado(id: string, estado?: string, tipo?: string) {
+    // First verify that the mercado exists
+    const mercado = await this.prisma.mercado.findUnique({
+      where: { id },
+      select: { id: true, nombre_mercado: true, isActive: true },
+    });
+
+    if (!mercado) {
+      throw new NotFoundException({
+        message: 'Mercado no encontrado',
+        error: 'El mercado solicitado no existe en el sistema',
+        statusCode: 404,
+      });
+    }
+
+    // Build the where clause for filtering
+    const where = {
+      mercadoId: id,
+      ...(estado && { estado_local: estado }),
+      ...(tipo && { tipo_local: tipo }),
+    };
+
+    const locales = await this.prisma.local.findMany({
+      where,
+      include: {
+        facturas: {
+          select: {
+            id: true,
+            mes: true,
+            anio: true,
+            monto: true,
+            estado: true,
+            createdAt: true,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+          take: 3, // Show last 3 invoices
+        },
+        _count: {
+          select: {
+            facturas: true,
+          },
+        },
+      },
+      orderBy: [{ numero_local: 'asc' }, { createdAt: 'desc' }],
+    });
+
+    return {
+      mercado: {
+        id: mercado.id,
+        nombre_mercado: mercado.nombre_mercado,
+        isActive: mercado.isActive,
+      },
+      locales,
+      total_locales: locales.length,
+      filtros_aplicados: {
+        estado: estado || null,
+        tipo: tipo || null,
+      },    };
   }
 }

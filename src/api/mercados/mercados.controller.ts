@@ -164,4 +164,35 @@ export class MercadosController {
   activate(@Param('id') id: string) {
     return this.mercadosService.activate(id);
   }
+
+  @Get(':id/locales')
+  @Roles(Role.ADMIN, Role.MARKET, Role.USER)
+  @ApiOperation({ summary: 'Obtener locales de un mercado' })
+  @ApiQuery({
+    name: 'estado',
+    required: false,
+    type: String,
+    description: 'Filtrar por estado del local (DISPONIBLE, OCUPADO, MANTENIMIENTO, PENDIENTE)',
+  })
+  @ApiQuery({
+    name: 'tipo',
+    required: false,
+    type: String,
+    description: 'Filtrar por tipo del local',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Locales del mercado obtenidos exitosamente',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Mercado no encontrado',
+  })
+  getLocalesByMercado(
+    @Param('id') id: string,
+    @Query('estado') estado?: string,
+    @Query('tipo') tipo?: string,
+  ) {
+    return this.mercadosService.getLocalesByMercado(id, estado, tipo);
+  }
 }

@@ -2,7 +2,7 @@
 
 ## 📋 RESUMEN DEL PROYECTO
 
-**Tecnologías**: Angular 20, Ionic, Tailwind CSS, Capacitor  
+**Tecnologías**: Angular 19, Ionic, Tailwind CSS, Capacitor  
 **Objetivo**: Aplicación frontend completa para gestión de facturas de mercados municipales  
 **Plataformas**: Web y Mobile (Android/iOS)  
 **Backend**: NestJS con Prisma y PostgreSQL  
@@ -12,7 +12,7 @@
 ## ✅ COMPLETADO
 
 ### 1. **CONFIGURACIÓN DEL PROYECTO**
-- ✅ Proyecto Ionic creado con Angular 20
+- ✅ Proyecto Ionic creado con Angular 19
 - ✅ Configuración de Standalone Components
 - ✅ Integración de Capacitor para mobile
 - ✅ Configuración de Tailwind CSS con tema personalizado

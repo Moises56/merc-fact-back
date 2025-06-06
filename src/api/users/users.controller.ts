@@ -30,7 +30,7 @@ import { User } from '@prisma/client';
 
 @ApiTags('users')
 @Controller('api/users')
-@UseGuards(JwtAuthGuard, RolesGuard)
+// @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}

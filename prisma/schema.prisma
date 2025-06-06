@@ -62,8 +62,8 @@ model Mercado {
 model Local {
   id                String   @id @default(uuid())
   nombre_local      String?
-  numero_local      String?  @unique
-  permiso_operacion String?  @unique
+  numero_local      String?  
+  permiso_operacion String?
   tipo_local        String?  // Usar String en lugar de enum
   direccion_local   String?
   estado_local      String   @default("PENDIENTE") // Usar String en lugar de enum
