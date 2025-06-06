@@ -17,12 +17,12 @@ async function bootstrap() {
   );
 
   // Configuración de cookies
-  app.use(cookieParser());  // Configuración de CORS
+  app.use(cookieParser()); // Configuración de CORS
   // Parse comma-separated origins from FRONTEND_URL
   const allowedOrigins = process.env.FRONTEND_URL
-    ? process.env.FRONTEND_URL.split(',').map(origin => origin.trim())
+    ? process.env.FRONTEND_URL.split(',').map((origin) => origin.trim())
     : ['http://localhost:3001'];
-  
+
   app.enableCors({
     origin: allowedOrigins,
     credentials: true,
