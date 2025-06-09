@@ -20,7 +20,11 @@ async function bootstrap() {
   // Parse comma-separated origins from FRONTEND_URL
   const allowedOrigins = process.env.FRONTEND_URL
     ? process.env.FRONTEND_URL.split(',').map((origin) => origin.trim())
-    : ['http://localhost:4200', 'https://fact-amdc.netlify.app'];
+    : [
+        'http://localhost:4200',
+        'https://fact-amdc.netlify.app',
+        'http://localhost:8100',
+      ];
   app.enableCors({
     origin: function (origin, callback) {
       // Permitir solicitudes sin origen (como aplicaciones móviles o curl)
