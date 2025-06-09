@@ -1,0 +1,30 @@
+{
+  "name": "postman-tests",
+  "version": "1.0.0",
+  "description": "Newman test runner for Invoice-Fact API",
+  "scripts": {
+    "test": "newman run Invoice-Fact-API.postman_collection.json -e Invoice-Fact-API.postman_environment.json",
+    "test:verbose": "newman run Invoice-Fact-API.postman_collection.json -e Invoice-Fact-API.postman_environment.json --verbose",
+    "test:report": "newman run Invoice-Fact-API.postman_collection.json -e Invoice-Fact-API.postman_environment.json --reporters html --reporter-html-export test-report.html",
+    "test:auth": "newman run Invoice-Fact-API.postman_collection.json -e Invoice-Fact-API.postman_environment.json --folder 'Authentication'",
+    "test:users": "newman run Invoice-Fact-API.postman_collection.json -e Invoice-Fact-API.postman_environment.json --folder 'Users Management'",
+    "test:markets": "newman run Invoice-Fact-API.postman_collection.json -e Invoice-Fact-API.postman_environment.json --folder 'Markets/Mercados'",
+    "test:locals": "newman run Invoice-Fact-API.postman_collection.json -e Invoice-Fact-API.postman_environment.json --folder 'Locals/Locales'",
+    "test:invoices": "newman run Invoice-Fact-API.postman_collection.json -e Invoice-Fact-API.postman_environment.json --folder 'Invoices/Facturas'",
+    "test:audit": "newman run Invoice-Fact-API.postman_collection.json -e Invoice-Fact-API.postman_environment.json --folder 'Audit'",
+    "test:workflow": "newman run Invoice-Fact-API.postman_collection.json -e Invoice-Fact-API.postman_environment.json --folder 'Test Scenarios'",
+    "install-newman": "npm install -g newman newman-reporter-html",
+    "test:ci": "newman run Invoice-Fact-API.postman_collection.json -e Invoice-Fact-API.postman_environment.json --reporters json --reporter-json-export test-results.json --suppress-exit-code"
+  },
+  "devDependencies": {
+    "newman": "^6.0.0",
+    "newman-reporter-html": "^1.0.5"
+  },
+  "keywords": [
+    "postman",
+    "newman",
+    "api-testing",
+    "nestjs",
+    "invoice-fact"
+  ]
+}

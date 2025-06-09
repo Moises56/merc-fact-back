@@ -1,0 +1,1799 @@
+{
+  "info": {
+    "name": "Invoice-Fact API - Municipal Markets",
+    "description": "Comprehensive Postman collection for testing the NestJS Invoice-fact API system for municipal markets management",
+    "version": "1.0.0",
+    "_postman_id": "invoice-fact-api-collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Auto-refresh token if needed",
+          "if (pm.globals.get('access_token') && pm.globals.get('token_expiry')) {",
+          "    const now = new Date().getTime();",
+          "    const expiry = parseInt(pm.globals.get('token_expiry'));",
+          "    if (now >= expiry) {",
+          "        console.log('Token expired, clearing variables');",
+          "        pm.globals.unset('access_token');",
+          "        pm.globals.unset('token_expiry');",
+          "    }",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "mercado_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "local_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "factura_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 Authentication",
+      "item": [
+        {
+          "name": "Login Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has access token', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('access_token');",
+                  "    pm.expect(responseJson).to.have.property('user');",
+                  "    ",
+                  "    // Store token for future requests",
+                  "    pm.globals.set('access_token', responseJson.access_token);",
+                  "    pm.globals.set('user_id', responseJson.user.id);",
+                  "    ",
+                  "    // Set token expiry (1 hour from now)",
+                  "    const expiry = new Date().getTime() + (60 * 60 * 1000);",
+                  "    pm.globals.set('token_expiry', expiry.toString());",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@mercados.com\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Login as admin user to get JWT token"
+          }
+        },
+        {
+          "name": "Login Market User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has access token', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('access_token');",
+                  "    pm.expect(responseJson).to.have.property('user');",
+                  "    ",
+                  "    // Store token for future requests",
+                  "    pm.globals.set('access_token', responseJson.access_token);",
+                  "    pm.globals.set('user_id', responseJson.user.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"market@mercados.com\",\n  \"password\": \"market123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Login as market user"
+          }
+        },
+        {
+          "name": "Register New User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newuser@mercados.com\",\n  \"password\": \"password123\",\n  \"confirmPassword\": \"password123\",\n  \"firstName\": \"Nuevo\",\n  \"lastName\": \"Usuario\",\n  \"username\": \"nuevouser\",\n  \"role\": \"USER\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Register a new user in the system"
+          }
+        },
+        {
+          "name": "Get Current User Profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "profile"]
+            },
+            "description": "Get current authenticated user profile"
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"admin123\",\n  \"newPassword\": \"newadmin123\",\n  \"confirmPassword\": \"newadmin123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/change-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "change-password"]
+            },
+            "description": "Change current user password"
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Logout current user"
+          }
+        }
+      ],
+      "description": "Authentication endpoints for login, register, profile management"
+    },
+    {
+      "name": "👥 Users Management",
+      "item": [
+        {
+          "name": "Get All Users",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is an array', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Get all users with pagination"
+          }
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{user_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{user_id}}"]
+            },
+            "description": "Get specific user by ID"
+          }
+        },
+        {
+          "name": "Create New User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('User created successfully', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('id');",
+                  "    pm.expect(responseJson).to.have.property('email');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"testuser@mercados.com\",\n  \"password\": \"test123\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"User\",\n  \"username\": \"testuser\",\n  \"role\": \"USER\",\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
+            },
+            "description": "Create a new user (Admin only)"
+          }
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Updated Test\",\n  \"lastName\": \"Updated User\",\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/{{user_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{user_id}}"]
+            },
+            "description": "Update user information"
+          }
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{user_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{user_id}}"]
+            },
+            "description": "Delete user (Admin only)"
+          }
+        },
+        {
+          "name": "Search Users",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?search=admin&role=ADMIN&isActive=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "admin"
+                },
+                {
+                  "key": "role",
+                  "value": "ADMIN"
+                },
+                {
+                  "key": "isActive",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "Search users with filters"
+          }
+        }
+      ],
+      "description": "User management endpoints for CRUD operations"
+    },
+    {
+      "name": "🏪 Markets (Mercados)",
+      "item": [
+        {
+          "name": "Get All Markets",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has markets data', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('data');",
+                  "    pm.expect(responseJson).to.have.property('meta');",
+                  "    ",
+                  "    if (responseJson.data.length > 0) {",
+                  "        pm.globals.set('mercado_id', responseJson.data[0].id);",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/mercados?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["mercados"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Get all markets with pagination"
+          }
+        },
+        {
+          "name": "Get Market by ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/mercados/{{mercado_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["mercados", "{{mercado_id}}"]
+            },
+            "description": "Get specific market by ID"
+          }
+        },
+        {
+          "name": "Create New Market",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Market created successfully', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('id');",
+                  "    pm.expect(responseJson).to.have.property('nombre');",
+                  "    pm.globals.set('mercado_id', responseJson.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Mercado Test\",\n  \"direccion\": \"Av. Test 123, Test City\",\n  \"telefono\": \"+123456789\",\n  \"email\": \"test@mercado.com\",\n  \"horarioApertura\": \"06:00\",\n  \"horarioCierre\": \"18:00\",\n  \"descripcion\": \"Mercado de prueba para testing\",\n  \"capacidadLocales\": 50,\n  \"fechaApertura\": \"2024-01-01T00:00:00.000Z\",\n  \"estado\": \"ACTIVO\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mercados",
+              "host": ["{{baseUrl}}"],
+              "path": ["mercados"]
+            },
+            "description": "Create a new market"
+          }
+        },
+        {
+          "name": "Update Market",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Mercado Test Actualizado\",\n  \"descripcion\": \"Mercado actualizado para testing\",\n  \"telefono\": \"+123456790\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mercados/{{mercado_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["mercados", "{{mercado_id}}"]
+            },
+            "description": "Update market information"
+          }
+        },
+        {
+          "name": "Delete Market",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/mercados/{{mercado_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["mercados", "{{mercado_id}}"]
+            },
+            "description": "Delete market"
+          }
+        },
+        {
+          "name": "Search Markets",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/mercados?search=central&estado=ACTIVO&sort=nombre&order=asc",
+              "host": ["{{baseUrl}}"],
+              "path": ["mercados"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "central"
+                },
+                {
+                  "key": "estado",
+                  "value": "ACTIVO"
+                },
+                {
+                  "key": "sort",
+                  "value": "nombre"
+                },
+                {
+                  "key": "order",
+                  "value": "asc"
+                }
+              ]
+            },
+            "description": "Search markets with filters and sorting"
+          }
+        }
+      ],
+      "description": "Market management endpoints for CRUD operations"
+    },
+    {
+      "name": "🏬 Locals (Locales)",
+      "item": [
+        {
+          "name": "Get All Locals",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has locals data', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('data');",
+                  "    pm.expect(responseJson).to.have.property('meta');",
+                  "    ",
+                  "    if (responseJson.data.length > 0) {",
+                  "        pm.globals.set('local_id', responseJson.data[0].id);",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/locales?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["locales"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Get all locals with pagination"
+          }
+        },
+        {
+          "name": "Get Local by ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/locales/{{local_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["locales", "{{local_id}}"]
+            },
+            "description": "Get specific local by ID"
+          }
+        },
+        {
+          "name": "Create New Local",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Local created successfully', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('id');",
+                  "    pm.expect(responseJson).to.have.property('numeroLocal');",
+                  "    pm.globals.set('local_id', responseJson.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"numeroLocal\": \"L-001\",\n  \"tipoLocal\": \"COMERCIAL\",\n  \"area\": 25.5,\n  \"descripcion\": \"Local comercial para venta de productos\",\n  \"estado\": \"DISPONIBLE\",\n  \"mercadoId\": \"{{mercado_id}}\",\n  \"precioAlquiler\": 500.00,\n  \"fechaDisponibilidad\": \"2024-01-01T00:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/locales",
+              "host": ["{{baseUrl}}"],
+              "path": ["locales"]
+            },
+            "description": "Create a new local"
+          }
+        },
+        {
+          "name": "Update Local",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descripcion\": \"Local comercial actualizado\",\n  \"precioAlquiler\": 550.00,\n  \"estado\": \"OCUPADO\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/locales/{{local_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["locales", "{{local_id}}"]
+            },
+            "description": "Update local information"
+          }
+        },
+        {
+          "name": "Delete Local",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/locales/{{local_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["locales", "{{local_id}}"]
+            },
+            "description": "Delete local"
+          }
+        },
+        {
+          "name": "Get Locals by Market",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/locales?mercadoId={{mercado_id}}&estado=DISPONIBLE&tipoLocal=COMERCIAL",
+              "host": ["{{baseUrl}}"],
+              "path": ["locales"],
+              "query": [
+                {
+                  "key": "mercadoId",
+                  "value": "{{mercado_id}}"
+                },
+                {
+                  "key": "estado",
+                  "value": "DISPONIBLE"
+                },
+                {
+                  "key": "tipoLocal",
+                  "value": "COMERCIAL"
+                }
+              ]
+            },
+            "description": "Get locals filtered by market and other criteria"
+          }
+        }
+      ],
+      "description": "Local management endpoints for CRUD operations"
+    },
+    {
+      "name": "🧾 Invoices (Facturas)",
+      "item": [
+        {
+          "name": "Get All Invoices",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has invoices data', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('data');",
+                  "    pm.expect(responseJson).to.have.property('meta');",
+                  "    ",
+                  "    if (responseJson.data.length > 0) {",
+                  "        pm.globals.set('factura_id', responseJson.data[0].id);",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/facturas?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["facturas"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Get all invoices with pagination"
+          }
+        },
+        {
+          "name": "Get Invoice by ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/facturas/{{factura_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["facturas", "{{factura_id}}"]
+            },
+            "description": "Get specific invoice by ID"
+          }
+        },
+        {
+          "name": "Create New Invoice",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Invoice created successfully', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('id');",
+                  "    pm.expect(responseJson).to.have.property('numeroFactura');",
+                  "    pm.globals.set('factura_id', responseJson.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"numeroFactura\": \"FAC-2024-001\",\n  \"fechaEmision\": \"2024-06-09T00:00:00.000Z\",\n  \"fechaVencimiento\": \"2024-07-09T00:00:00.000Z\",\n  \"subtotal\": 500.00,\n  \"impuestos\": 95.00,\n  \"total\": 595.00,\n  \"estado\": \"PENDIENTE\",\n  \"descripcion\": \"Factura de alquiler mensual\",\n  \"localId\": \"{{local_id}}\",\n  \"usuarioId\": \"{{user_id}}\",\n  \"conceptos\": [\n    {\n      \"descripcion\": \"Alquiler local L-001\",\n      \"cantidad\": 1,\n      \"precioUnitario\": 500.00,\n      \"subtotal\": 500.00\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/facturas",
+              "host": ["{{baseUrl}}"],
+              "path": ["facturas"]
+            },
+            "description": "Create a new invoice"
+          }
+        },
+        {
+          "name": "Update Invoice",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"PAGADA\",\n  \"descripcion\": \"Factura pagada - Alquiler mensual\",\n  \"fechaPago\": \"2024-06-09T10:30:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/facturas/{{factura_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["facturas", "{{factura_id}}"]
+            },
+            "description": "Update invoice information"
+          }
+        },
+        {
+          "name": "Delete Invoice",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/facturas/{{factura_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["facturas", "{{factura_id}}"]
+            },
+            "description": "Delete invoice"
+          }
+        },
+        {
+          "name": "Get Invoices by Local",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/facturas?localId={{local_id}}&estado=PENDIENTE",
+              "host": ["{{baseUrl}}"],
+              "path": ["facturas"],
+              "query": [
+                {
+                  "key": "localId",
+                  "value": "{{local_id}}"
+                },
+                {
+                  "key": "estado",
+                  "value": "PENDIENTE"
+                }
+              ]
+            },
+            "description": "Get invoices filtered by local and status"
+          }
+        },
+        {
+          "name": "Get Invoices by Date Range",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/facturas?fechaInicio=2024-01-01&fechaFin=2024-12-31&sort=fechaEmision&order=desc",
+              "host": ["{{baseUrl}}"],
+              "path": ["facturas"],
+              "query": [
+                {
+                  "key": "fechaInicio",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "fechaFin",
+                  "value": "2024-12-31"
+                },
+                {
+                  "key": "sort",
+                  "value": "fechaEmision"
+                },
+                {
+                  "key": "order",
+                  "value": "desc"
+                }
+              ]
+            },
+            "description": "Get invoices within date range with sorting"
+          }
+        },
+        {
+          "name": "Get Invoice Statistics",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/facturas/estadisticas?periodo=2024",
+              "host": ["{{baseUrl}}"],
+              "path": ["facturas", "estadisticas"],
+              "query": [
+                {
+                  "key": "periodo",
+                  "value": "2024"
+                }
+              ]
+            },
+            "description": "Get invoice statistics for a period"
+          }
+        }
+      ],
+      "description": "Invoice management endpoints for CRUD operations and reporting"
+    },
+    {
+      "name": "📊 Audit",
+      "item": [
+        {
+          "name": "Get All Audit Logs",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/audit?page=1&limit=20&sort=createdAt&order=desc",
+              "host": ["{{baseUrl}}"],
+              "path": ["audit"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "sort",
+                  "value": "createdAt"
+                },
+                {
+                  "key": "order",
+                  "value": "desc"
+                }
+              ]
+            },
+            "description": "Get all audit logs with pagination"
+          }
+        },
+        {
+          "name": "Get Audit Log by ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/audit/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["audit", "1"]
+            },
+            "description": "Get specific audit log by ID"
+          }
+        },
+        {
+          "name": "Get Audit Logs by User",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/audit?userId={{user_id}}&action=CREATE",
+              "host": ["{{baseUrl}}"],
+              "path": ["audit"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{user_id}}"
+                },
+                {
+                  "key": "action",
+                  "value": "CREATE"
+                }
+              ]
+            },
+            "description": "Get audit logs filtered by user and action"
+          }
+        },
+        {
+          "name": "Get Audit Logs by Date Range",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/audit?startDate=2024-01-01&endDate=2024-12-31&entity=Factura",
+              "host": ["{{baseUrl}}"],
+              "path": ["audit"],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2024-12-31"
+                },
+                {
+                  "key": "entity",
+                  "value": "Factura"
+                }
+              ]
+            },
+            "description": "Get audit logs within date range for specific entity"
+          }
+        },
+        {
+          "name": "Export Audit Logs",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/audit/export?format=csv&startDate=2024-01-01&endDate=2024-12-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["audit", "export"],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "csv"
+                },
+                {
+                  "key": "startDate",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2024-12-31"
+                }
+              ]
+            },
+            "description": "Export audit logs in CSV format"
+          }
+        }
+      ],
+      "description": "Audit trail endpoints for tracking system changes (Admin/Auditor only)"
+    },
+    {
+      "name": "🌱 Seed Data",
+      "item": [
+        {
+          "name": "Seed All Data",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/seed",
+              "host": ["{{baseUrl}}"],
+              "path": ["seed"]
+            },
+            "description": "Initialize database with seed data (Admin only)"
+          }
+        },
+        {
+          "name": "Reset Database",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/seed/reset",
+              "host": ["{{baseUrl}}"],
+              "path": ["seed", "reset"]
+            },
+            "description": "Reset database and clear all data (Admin only - USE WITH CAUTION)"
+          }
+        }
+      ],
+      "description": "Database seeding endpoints for development and testing"
+    },
+    {
+      "name": "🧪 Test Scenarios",
+      "item": [
+        {
+          "name": "Complete Workflow Test",
+          "item": [
+            {
+              "name": "1. Login as Admin",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"admin@mercados.com\",\n  \"password\": \"admin123\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/auth/login",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["auth", "login"]
+                }
+              }
+            },
+            {
+              "name": "2. Create Market",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Mercado Workflow Test\",\n  \"direccion\": \"Av. Workflow 123\",\n  \"telefono\": \"+111222333\",\n  \"email\": \"workflow@mercado.com\",\n  \"horarioApertura\": \"06:00\",\n  \"horarioCierre\": \"18:00\",\n  \"descripcion\": \"Mercado para test completo\",\n  \"capacidadLocales\": 20,\n  \"fechaApertura\": \"2024-01-01T00:00:00.000Z\",\n  \"estado\": \"ACTIVO\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/mercados",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["mercados"]
+                }
+              }
+            },
+            {
+              "name": "3. Create Local in Market",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"numeroLocal\": \"WF-001\",\n  \"tipoLocal\": \"COMERCIAL\",\n  \"area\": 30.0,\n  \"descripcion\": \"Local para workflow test\",\n  \"estado\": \"DISPONIBLE\",\n  \"mercadoId\": \"{{mercado_id}}\",\n  \"precioAlquiler\": 600.00,\n  \"fechaDisponibilidad\": \"2024-01-01T00:00:00.000Z\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/locales",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["locales"]
+                }
+              }
+            },
+            {
+              "name": "4. Create User",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"workflowuser@mercados.com\",\n  \"password\": \"workflow123\",\n  \"firstName\": \"Workflow\",\n  \"lastName\": \"User\",\n  \"username\": \"workflowuser\",\n  \"role\": \"USER\",\n  \"isActive\": true\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/users",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users"]
+                }
+              }
+            },
+            {
+              "name": "5. Create Invoice",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"numeroFactura\": \"WF-2024-001\",\n  \"fechaEmision\": \"2024-06-09T00:00:00.000Z\",\n  \"fechaVencimiento\": \"2024-07-09T00:00:00.000Z\",\n  \"subtotal\": 600.00,\n  \"impuestos\": 114.00,\n  \"total\": 714.00,\n  \"estado\": \"PENDIENTE\",\n  \"descripcion\": \"Factura workflow test\",\n  \"localId\": \"{{local_id}}\",\n  \"usuarioId\": \"{{user_id}}\",\n  \"conceptos\": [\n    {\n      \"descripcion\": \"Alquiler local WF-001\",\n      \"cantidad\": 1,\n      \"precioUnitario\": 600.00,\n      \"subtotal\": 600.00\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/facturas",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["facturas"]
+                }
+              }
+            },
+            {
+              "name": "6. Pay Invoice",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"estado\": \"PAGADA\",\n  \"fechaPago\": \"2024-06-09T14:30:00.000Z\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/facturas/{{factura_id}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["facturas", "{{factura_id}}"]
+                }
+              }
+            },
+            {
+              "name": "7. Check Audit Trail",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/audit?limit=10&sort=createdAt&order=desc",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["audit"],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    },
+                    {
+                      "key": "sort",
+                      "value": "createdAt"
+                    },
+                    {
+                      "key": "order",
+                      "value": "desc"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Error Handling Tests",
+          "item": [
+            {
+              "name": "Unauthorized Access",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/users",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users"]
+                },
+                "description": "Test accessing protected endpoint without token"
+              }
+            },
+            {
+              "name": "Invalid Credentials",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"invalid@email.com\",\n  \"password\": \"wrongpassword\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/auth/login",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["auth", "login"]
+                },
+                "description": "Test login with invalid credentials"
+              }
+            },
+            {
+              "name": "Create Duplicate User",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"admin@mercados.com\",\n  \"password\": \"test123\",\n  \"firstName\": \"Duplicate\",\n  \"lastName\": \"User\",\n  \"username\": \"duplicateuser\",\n  \"role\": \"USER\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/users",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users"]
+                },
+                "description": "Test creating user with duplicate email"
+              }
+            },
+            {
+              "name": "Access Non-existent Resource",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/mercados/99999999-9999-9999-9999-999999999999",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["mercados", "99999999-9999-9999-9999-999999999999"]
+                },
+                "description": "Test accessing non-existent market"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

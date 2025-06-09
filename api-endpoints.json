@@ -1,0 +1,274 @@
+{
+  "apiConfig": {
+    "baseUrl": "http://localhost:3000/api",
+    "version": "v1",
+    "timeout": 30000
+  },
+  "endpoints": {
+    "auth": {
+      "login": "POST /auth/login",
+      "register": "POST /auth/register",
+      "logout": "POST /auth/logout",
+      "profile": "GET /auth/profile",
+      "changePassword": "PATCH /auth/change-password",
+      "refresh": "POST /auth/refresh"
+    },
+    "users": {
+      "getAll": "GET /users",
+      "getById": "GET /users/:id",
+      "create": "POST /users",
+      "update": "PATCH /users/:id",
+      "delete": "DELETE /users/:id",
+      "search": "GET /users?search=:term"
+    },
+    "mercados": {
+      "getAll": "GET /mercados",
+      "getById": "GET /mercados/:id",
+      "create": "POST /mercados",
+      "update": "PATCH /mercados/:id",
+      "delete": "DELETE /mercados/:id",
+      "search": "GET /mercados?search=:term",
+      "stats": "GET /mercados/stats",
+      "activate": "PATCH /mercados/:id/activate",
+      "deactivate": "PATCH /mercados/:id/deactivate"
+    },
+    "locales": {
+      "getAll": "GET /locales",
+      "getById": "GET /locales/:id",
+      "create": "POST /locales",
+      "update": "PATCH /locales/:id",
+      "delete": "DELETE /locales/:id",
+      "getByMarket": "GET /locales/by-market/:marketId",
+      "search": "GET /locales?search=:term"
+    },
+    "facturas": {
+      "getAll": "GET /facturas",
+      "getById": "GET /facturas/:id",
+      "create": "POST /facturas",
+      "update": "PATCH /facturas/:id",
+      "delete": "DELETE /facturas/:id",
+      "getByLocal": "GET /facturas/by-local/:localId",
+      "pay": "POST /facturas/:id/pay",
+      "stats": "GET /facturas/stats",
+      "search": "GET /facturas?search=:term"
+    },
+    "audit": {
+      "getLogs": "GET /audit/logs",
+      "getLogById": "GET /audit/logs/:id",
+      "getStats": "GET /audit/stats",
+      "getLogsByUser": "GET /audit/users/:userId",
+      "getLogsByEntity": "GET /audit/entities/:entityType"
+    },
+    "seed": {
+      "execute": "POST /seed",
+      "clean": "DELETE /seed"
+    }
+  },
+  "queryParameters": {
+    "pagination": {
+      "page": "number - Page number (default: 1)",
+      "limit": "number - Items per page (default: 10)"
+    },
+    "search": {
+      "search": "string - Search term",
+      "sort": "string - Field to sort by",
+      "order": "string - Sort order (asc/desc)"
+    },
+    "filters": {
+      "users": {
+        "role": "ADMIN | MARKET | USER | AUDITOR",
+        "isActive": "boolean"
+      },
+      "mercados": {
+        "estado": "ACTIVO | INACTIVO | MANTENIMIENTO"
+      },
+      "locales": {
+        "tipoLocal": "COMERCIAL | GASTRONIMICO | SERVICIOS | OTROS",
+        "estado": "DISPONIBLE | OCUPADO | MANTENIMIENTO | RESERVADO",
+        "mercadoId": "string - UUID"
+      },
+      "facturas": {
+        "estado": "PENDIENTE | PAGADA | VENCIDA | ANULADA",
+        "localId": "string - UUID",
+        "fechaDesde": "string - ISO date",
+        "fechaHasta": "string - ISO date"
+      }
+    }
+  },
+  "requestBodies": {
+    "auth": {
+      "login": {
+        "email": "string - required",
+        "password": "string - required"
+      },
+      "register": {
+        "email": "string - required",
+        "password": "string - required",
+        "confirmPassword": "string - required",
+        "firstName": "string - required",
+        "lastName": "string - required",
+        "username": "string - required",
+        "role": "UserRole - required"
+      },
+      "changePassword": {
+        "currentPassword": "string - required",
+        "newPassword": "string - required",
+        "confirmPassword": "string - required"
+      }
+    },
+    "users": {
+      "create": {
+        "email": "string - required",
+        "password": "string - required",
+        "firstName": "string - required",
+        "lastName": "string - required",
+        "username": "string - required",
+        "role": "UserRole - required",
+        "isActive": "boolean - optional"
+      },
+      "update": {
+        "firstName": "string - optional",
+        "lastName": "string - optional",
+        "username": "string - optional",
+        "role": "UserRole - optional",
+        "isActive": "boolean - optional"
+      }
+    },
+    "mercados": {
+      "create": {
+        "nombre": "string - required",
+        "direccion": "string - required",
+        "telefono": "string - optional",
+        "email": "string - optional",
+        "horarioApertura": "string - optional (HH:mm format)",
+        "horarioCierre": "string - optional (HH:mm format)",
+        "descripcion": "string - optional",
+        "capacidadLocales": "number - optional",
+        "fechaApertura": "string - optional (ISO date)",
+        "estado": "EstadoMercado - optional"
+      },
+      "update": {
+        "nombre": "string - optional",
+        "direccion": "string - optional",
+        "telefono": "string - optional",
+        "email": "string - optional",
+        "horarioApertura": "string - optional",
+        "horarioCierre": "string - optional",
+        "descripcion": "string - optional",
+        "capacidadLocales": "number - optional",
+        "estado": "EstadoMercado - optional"
+      }
+    },
+    "locales": {
+      "create": {
+        "numeroLocal": "string - required",
+        "tipoLocal": "TipoLocal - required",
+        "area": "number - required",
+        "descripcion": "string - optional",
+        "estado": "EstadoLocal - optional",
+        "mercadoId": "string - required (UUID)",
+        "precioAlquiler": "number - optional",
+        "fechaDisponibilidad": "string - optional (ISO date)"
+      },
+      "update": {
+        "numeroLocal": "string - optional",
+        "tipoLocal": "TipoLocal - optional",
+        "area": "number - optional",
+        "descripcion": "string - optional",
+        "estado": "EstadoLocal - optional",
+        "precioAlquiler": "number - optional",
+        "fechaDisponibilidad": "string - optional"
+      }
+    },
+    "facturas": {
+      "create": {
+        "localId": "string - required (UUID)",
+        "numeroFactura": "string - required",
+        "fechaEmision": "string - required (ISO date)",
+        "fechaVencimiento": "string - required (ISO date)",
+        "monto": "number - required",
+        "descripcion": "string - optional",
+        "estado": "EstadoFactura - optional",
+        "conceptos": "string - optional"
+      },
+      "update": {
+        "numeroFactura": "string - optional",
+        "fechaVencimiento": "string - optional",
+        "monto": "number - optional",
+        "descripcion": "string - optional",
+        "estado": "EstadoFactura - optional",
+        "conceptos": "string - optional"
+      },
+      "pay": {
+        "metodoPago": "string - required",
+        "fechaPago": "string - optional (ISO date)",
+        "referenciaPago": "string - optional",
+        "observaciones": "string - optional"
+      }
+    }
+  },
+  "responseFormats": {
+    "success": {
+      "single": {
+        "data": "object - The requested resource",
+        "message": "string - Success message",
+        "statusCode": "number - HTTP status code"
+      },
+      "paginated": {
+        "data": "array - Array of resources",
+        "meta": {
+          "page": "number - Current page",
+          "limit": "number - Items per page",
+          "total": "number - Total items",
+          "totalPages": "number - Total pages"
+        }
+      },
+      "auth": {
+        "access_token": "string - JWT token",
+        "user": {
+          "id": "string - User UUID",
+          "email": "string - User email",
+          "firstName": "string - User first name",
+          "lastName": "string - User last name",
+          "username": "string - Username",
+          "role": "UserRole - User role",
+          "isActive": "boolean - User status"
+        }
+      }
+    },
+    "error": {
+      "message": "string - Error message",
+      "error": "string - Error type",
+      "statusCode": "number - HTTP status code",
+      "timestamp": "string - ISO timestamp",
+      "path": "string - Request path"
+    }
+  },
+  "enums": {
+    "UserRole": ["ADMIN", "MARKET", "USER", "AUDITOR"],
+    "EstadoMercado": ["ACTIVO", "INACTIVO", "MANTENIMIENTO"],
+    "EstadoLocal": ["DISPONIBLE", "OCUPADO", "MANTENIMIENTO", "RESERVADO"],
+    "TipoLocal": ["COMERCIAL", "GASTRONIMICO", "SERVICIOS", "OTROS"],
+    "EstadoFactura": ["PENDIENTE", "PAGADA", "VENCIDA", "ANULADA"]
+  },
+  "authentication": {
+    "type": "Bearer Token (JWT)",
+    "header": "Authorization: Bearer <token>",
+    "tokenStorage": "HTTP-only cookies (recommended) or localStorage",
+    "tokenExpiry": "1 hour (configurable)",
+    "refreshEndpoint": "/auth/refresh"
+  },
+  "sampleUrls": {
+    "getAllMarkets": "GET http://localhost:3000/api/mercados?page=1&limit=10",
+    "getMarketById": "GET http://localhost:3000/api/mercados/uuid-here",
+    "searchMarkets": "GET http://localhost:3000/api/mercados?search=central&estado=ACTIVO",
+    "createMarket": "POST http://localhost:3000/api/mercados",
+    "updateMarket": "PATCH http://localhost:3000/api/mercados/uuid-here",
+    "deleteMarket": "DELETE http://localhost:3000/api/mercados/uuid-here",
+    "getLocalsByMarket": "GET http://localhost:3000/api/locales/by-market/market-uuid",
+    "getInvoicesByLocal": "GET http://localhost:3000/api/facturas/by-local/local-uuid",
+    "payInvoice": "POST http://localhost:3000/api/facturas/invoice-uuid/pay",
+    "getAuditLogs": "GET http://localhost:3000/api/audit/logs?page=1&limit=20",
+    "getUserProfile": "GET http://localhost:3000/api/auth/profile"
+  }
+}
