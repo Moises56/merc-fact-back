@@ -51,13 +51,12 @@
       "pay": "POST /facturas/:id/pay",
       "stats": "GET /facturas/stats",
       "search": "GET /facturas?search=:term"
-    },
-    "audit": {
-      "getLogs": "GET /audit/logs",
-      "getLogById": "GET /audit/logs/:id",
-      "getStats": "GET /audit/stats",
-      "getLogsByUser": "GET /audit/users/:userId",
-      "getLogsByEntity": "GET /audit/entities/:entityType"
+    },    "audit": {
+      "getLogs": "GET /api/audit/logs",
+      "getLogById": "GET /api/audit/logs/:id",
+      "getStats": "GET /api/audit/stats",
+      "getLogsByUser": "GET /api/audit/users/:userId",
+      "getLogsByEntity": "GET /api/audit/entities/:entityType"
     },
     "seed": {
       "execute": "POST /seed",

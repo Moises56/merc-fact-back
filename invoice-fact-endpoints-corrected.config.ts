@@ -1,5 +1,5 @@
 // Invoice-Fact API Endpoints Configuration for Angular 19
-// Generated for NestJS Invoice-fact API system
+// Generated for NestJS Invoice-fact API system - CORRECTED VERSION
 
 export interface ApiEndpoints {
   auth: {
@@ -64,7 +64,7 @@ export interface ApiEndpoints {
 
 export const API_CONFIG = {
   // Base URL - Update this according to your environment
-  BASE_URL: 'http://localhost:3000/api',
+  BASE_URL: 'http://localhost:3000',
   
   // API Version
   VERSION: 'v1',
@@ -75,81 +75,82 @@ export const API_CONFIG = {
   // Headers
   HEADERS: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json'
-  }
+    'Accept': 'application/json',
+  },
 };
 
 export const API_ENDPOINTS: ApiEndpoints = {
   // 🔐 Authentication Endpoints
   auth: {
-    login: '/auth/login',
-    register: '/auth/register', 
-    logout: '/auth/logout',
-    profile: '/auth/profile',
-    changePassword: '/auth/change-password',
-    refresh: '/auth/refresh'
+    login: '/api/auth/login',
+    register: '/api/auth/register',
+    logout: '/api/auth/logout',
+    profile: '/api/auth/profile',
+    changePassword: '/api/auth/change-password',
+    refresh: '/api/auth/refresh',
   },
 
   // 👥 Users Management Endpoints
   users: {
-    getAll: '/users',
-    getById: (id: string) => `/users/${id}`,
-    create: '/users',
-    update: (id: string) => `/users/${id}`,
-    delete: (id: string) => `/users/${id}`,
-    search: '/users'
+    getAll: '/api/users',
+    getById: (id: string) => `/api/users/${id}`,
+    create: '/api/users',
+    update: (id: string) => `/api/users/${id}`,
+    delete: (id: string) => `/api/users/${id}`,
+    search: '/api/users',
   },
 
   // 🏪 Markets (Mercados) Endpoints
   mercados: {
-    getAll: '/mercados',
-    getById: (id: string) => `/mercados/${id}`,
-    create: '/mercados',
-    update: (id: string) => `/mercados/${id}`,
-    delete: (id: string) => `/mercados/${id}`,
-    search: '/mercados',
-    stats: '/mercados/stats',
-    activate: (id: string) => `/mercados/${id}/activate`,
-    deactivate: (id: string) => `/mercados/${id}/deactivate`
+    getAll: '/api/mercados',
+    getById: (id: string) => `/api/mercados/${id}`,
+    create: '/api/mercados',
+    update: (id: string) => `/api/mercados/${id}`,
+    delete: (id: string) => `/api/mercados/${id}`,
+    search: '/api/mercados',
+    stats: '/api/mercados/stats',
+    activate: (id: string) => `/api/mercados/${id}/activate`,
+    deactivate: (id: string) => `/api/mercados/${id}/deactivate`,
   },
 
   // 🏬 Locals (Locales) Endpoints
   locales: {
-    getAll: '/locales',
-    getById: (id: string) => `/locales/${id}`,
-    create: '/locales',
-    update: (id: string) => `/locales/${id}`,
-    delete: (id: string) => `/locales/${id}`,
-    getByMarket: (marketId: string) => `/locales/by-market/${marketId}`,
-    search: '/locales'
+    getAll: '/api/locales',
+    getById: (id: string) => `/api/locales/${id}`,
+    create: '/api/locales',
+    update: (id: string) => `/api/locales/${id}`,
+    delete: (id: string) => `/api/locales/${id}`,
+    getByMarket: (marketId: string) => `/api/locales/by-market/${marketId}`,
+    search: '/api/locales',
   },
 
   // 🧾 Invoices (Facturas) Endpoints
   facturas: {
-    getAll: '/facturas',
-    getById: (id: string) => `/facturas/${id}`,
-    create: '/facturas',
-    update: (id: string) => `/facturas/${id}`,
-    delete: (id: string) => `/facturas/${id}`,
-    getByLocal: (localId: string) => `/facturas/by-local/${localId}`,
-    pay: (id: string) => `/facturas/${id}/pay`,
-    stats: '/facturas/stats',
-    search: '/facturas'
+    getAll: '/api/facturas',
+    getById: (id: string) => `/api/facturas/${id}`,
+    create: '/api/facturas',
+    update: (id: string) => `/api/facturas/${id}`,
+    delete: (id: string) => `/api/facturas/${id}`,
+    getByLocal: (localId: string) => `/api/facturas/by-local/${localId}`,
+    pay: (id: string) => `/api/facturas/${id}/pay`,
+    stats: '/api/facturas/stats',
+    search: '/api/facturas',
   },
-  // 📊 Audit Endpoints
+
+  // 📊 Audit Endpoints (CORRECTED PATHS)
   audit: {
     getLogs: '/api/audit/logs',
     getLogById: (id: string) => `/api/audit/logs/${id}`,
     getStats: '/api/audit/stats',
     getLogsByUser: (userId: string) => `/api/audit/users/${userId}`,
-    getLogsByEntity: (entityType: string) => `/api/audit/entities/${entityType}`
+    getLogsByEntity: (entityType: string) => `/api/audit/entities/${entityType}`,
   },
 
   // 🌱 Seed Data Endpoints
   seed: {
     execute: '/seed',
-    clean: '/seed'
-  }
+    clean: '/seed',
+  },
 };
 
 // Helper function to build full URL
@@ -180,7 +181,10 @@ export function buildQueryString(params: QueryParams): string {
 }
 
 // Helper function to build URL with query parameters
-export function buildApiUrlWithParams(endpoint: string, params?: QueryParams): string {
+export function buildApiUrlWithParams(
+  endpoint: string,
+  params?: QueryParams,
+): string {
   const baseUrl = buildApiUrl(endpoint);
   const queryString = params ? buildQueryString(params) : '';
   return `${baseUrl}${queryString}`;
@@ -192,7 +196,7 @@ export enum HttpMethod {
   POST = 'POST',
   PUT = 'PUT',
   PATCH = 'PATCH',
-  DELETE = 'DELETE'
+  DELETE = 'DELETE',
 }
 
 // User Roles enum
@@ -200,14 +204,14 @@ export enum UserRole {
   ADMIN = 'ADMIN',
   MARKET = 'MARKET',
   USER = 'USER',
-  AUDITOR = 'AUDITOR'
+  AUDITOR = 'AUDITOR',
 }
 
 // Market States enum
 export enum EstadoMercado {
   ACTIVO = 'ACTIVO',
   INACTIVO = 'INACTIVO',
-  MANTENIMIENTO = 'MANTENIMIENTO'
+  MANTENIMIENTO = 'MANTENIMIENTO',
 }
 
 // Local States enum
@@ -215,7 +219,7 @@ export enum EstadoLocal {
   DISPONIBLE = 'DISPONIBLE',
   OCUPADO = 'OCUPADO',
   MANTENIMIENTO = 'MANTENIMIENTO',
-  RESERVADO = 'RESERVADO'
+  RESERVADO = 'RESERVADO',
 }
 
 // Local Types enum
@@ -223,7 +227,7 @@ export enum TipoLocal {
   COMERCIAL = 'COMERCIAL',
   GASTRONIMICO = 'GASTRONIMICO',
   SERVICIOS = 'SERVICIOS',
-  OTROS = 'OTROS'
+  OTROS = 'OTROS',
 }
 
 // Invoice States enum
@@ -231,7 +235,7 @@ export enum EstadoFactura {
   PENDIENTE = 'PENDIENTE',
   PAGADA = 'PAGADA',
   VENCIDA = 'VENCIDA',
-  ANULADA = 'ANULADA'
+  ANULADA = 'ANULADA',
 }
 
 // Common response interfaces
@@ -386,8 +390,8 @@ export interface PayFacturaDto {
 // const url = buildApiUrl(API_ENDPOINTS.mercados.getById('uuid-here'));
 
 // Example 3: Search markets with filters
-// const url = buildApiUrlWithParams(API_ENDPOINTS.mercados.search, { 
-//   search: 'central', 
+// const url = buildApiUrlWithParams(API_ENDPOINTS.mercados.search, {
+//   search: 'central',
 //   estado: EstadoMercado.ACTIVO,
 //   sort: 'nombre',
 //   order: 'asc'
@@ -401,6 +405,15 @@ export interface PayFacturaDto {
 // const url = buildApiUrl(API_ENDPOINTS.mercados.update('uuid-here'));
 // const body: UpdateMercadoDto = { ... };
 
+// Example 6: Get audit logs
+// const url = buildApiUrlWithParams(API_ENDPOINTS.audit.getLogs, { page: 1, limit: 20 });
+
+// Example 7: Get audit logs by user
+// const url = buildApiUrl(API_ENDPOINTS.audit.getLogsByUser('user-uuid'));
+
+// Example 8: Get audit logs by entity type
+// const url = buildApiUrl(API_ENDPOINTS.audit.getLogsByEntity('mercados'));
+
 export default {
   API_CONFIG,
   API_ENDPOINTS,
@@ -412,5 +425,5 @@ export default {
   EstadoMercado,
   EstadoLocal,
   TipoLocal,
-  EstadoFactura
+  EstadoFactura,
 };

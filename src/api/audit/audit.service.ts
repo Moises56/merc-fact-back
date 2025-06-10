@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateAuditDto } from './dto/create-audit.dto';
-import { UpdateAuditDto } from './dto/update-audit.dto';
 
 @Injectable()
 export class AuditService {
@@ -153,6 +152,43 @@ export class AuditService {
       },
     };
   }
+
+  async findByEntityType(entityType: string, page: number = 1, limit: number = 10) {
+    const skip = (page - 1) * limit;
+
+    const [auditLogs, total] = await Promise.all([
+      this.prisma.auditLog.findMany({
+        where: { tabla: entityType },
+        include: {
+          user: {
+            select: {
+              id: true,
+              nombre: true,
+              apellido: true,
+              correo: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip,
+        take: limit,
+      }),
+      this.prisma.auditLog.count({ where: { tabla: entityType } }),
+    ]);
+
+    return {
+      data: auditLogs,
+      pagination: {
+        current_page: page,
+        per_page: limit,
+        total,
+        total_pages: Math.ceil(total / limit),
+      },
+    };
+  }
+
   async getAuditStats() {
     const [totalLogs, logsToday, logsByAction, logsByTable, mostActiveUsers] =
       await Promise.all([
@@ -263,13 +299,12 @@ export class AuditService {
       // Log the error but don't throw to avoid breaking the main operation
       console.error('Error creating audit log:', error);
     }
-  }
-  // Métodos que no deberían estar disponibles públicamente
-  update(_id: string, _updateAuditDto: UpdateAuditDto) {
+  }  // Métodos que no deberían estar disponibles públicamente
+  update(): never {
     throw new Error('Audit logs cannot be updated');
   }
 
-  remove(_id: string) {
+  remove(): never {
     throw new Error('Audit logs cannot be deleted');
   }
 }
