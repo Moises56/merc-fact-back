@@ -26,7 +26,10 @@ async function bootstrap() {
         'http://localhost:8100',
       ];
   app.enableCors({
-    origin: function (origin, callback) {
+    origin: function (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) {
       // Permitir solicitudes sin origen (como aplicaciones móviles o curl)
       if (!origin) {
         callback(null, true);
