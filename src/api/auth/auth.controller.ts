@@ -45,20 +45,18 @@ export class AuthController {
     @Body() loginDto: LoginDto,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const result = await this.authService.login(loginDto);
-
-    // Set HTTP-only cookies
+    const result = await this.authService.login(loginDto);    // Set HTTP-only cookies
     response.cookie('access_token', result.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: 'lax',
       maxAge: 15 * 60 * 1000, // 15 minutes
     });
 
     response.cookie('refresh_token', result.refresh_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
@@ -89,13 +87,11 @@ export class AuthController {
       return { statusCode: 401, message: 'Token de refresh no encontrado' };
     }
 
-    const result = await this.authService.refreshToken({ refreshToken });
-
-    // Update access token cookie
+    const result = await this.authService.refreshToken({ refreshToken });    // Update access token cookie
     response.cookie('access_token', result.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: 'lax',
       maxAge: 15 * 60 * 1000, // 15 minutes
     });
 
