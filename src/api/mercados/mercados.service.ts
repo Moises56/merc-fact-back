@@ -227,9 +227,7 @@ export class MercadosService {
       message: 'Mercado activado exitosamente',
       data: { id, isActive: true },
     };
-  }
-
-  async getMercadoStats() {
+  }  async getMercadoStats() {
     const totalMercados = await this.prisma.mercado.count({
       where: { isActive: true },
     });
@@ -257,6 +255,17 @@ export class MercadosService {
           isActive: true,
         },
       },
+    });    // Recaudación total general (de todos los mercados)
+    const recaudacionTotal = await this.prisma.factura.aggregate({
+      _sum: { monto: true },
+      where: {
+        estado: 'PAGADO',
+        local: {
+          mercado: {
+            isActive: true,
+          },
+        },
+      },
     });
 
     return {
@@ -266,6 +275,7 @@ export class MercadosService {
       locales_libres: totalLocales - ocupiedLocales,
       ocupacion_percentage:
         totalLocales > 0 ? (ocupiedLocales / totalLocales) * 100 : 0,
+      total_recaudado: Number(recaudacionTotal._sum?.monto) || 0,
     };
   }
   async getLocalesByMercado(id: string, estado?: string, tipo?: string) {
@@ -328,5 +338,75 @@ export class MercadosService {
         estado: estado || null,
         tipo: tipo || null,
       },    };
+  }
+
+  async getMercadoStatsById(id: string) {
+    // Verificar que el mercado existe
+    const mercado = await this.prisma.mercado.findUnique({
+      where: { id },
+      select: { id: true, nombre_mercado: true, isActive: true },
+    });
+
+    if (!mercado) {
+      throw new NotFoundException({
+        message: 'Mercado no encontrado',
+        error: 'No existe un mercado con el ID proporcionado',
+        statusCode: 404,
+      });
+    }
+
+    // Obtener estadísticas del mercado específico
+    const [
+      totalLocales,
+      localesOcupados,
+      localesLibres,
+      recaudacionTotal,
+    ] = await Promise.all([
+      // Total de locales en este mercado
+      this.prisma.local.count({
+        where: { mercadoId: id },
+      }),
+
+      // Locales ocupados en este mercado
+      this.prisma.local.count({
+        where: {
+          mercadoId: id,
+          estado_local: 'OCUPADO',
+        },
+      }),
+
+      // Locales libres en este mercado
+      this.prisma.local.count({
+        where: {
+          mercadoId: id,
+          estado_local: 'DISPONIBLE',
+        },
+      }),      // Recaudación total del mercado
+      this.prisma.factura.aggregate({
+        _sum: { monto: true },
+        where: {
+          estado: 'PAGADO',
+          local: {
+            mercadoId: id,
+          },
+        },
+      }),
+    ]);
+
+    // Calcular porcentaje de ocupación
+    const ocupacionPercentage = totalLocales > 0 
+      ? (localesOcupados / totalLocales) * 100 
+      : 0;
+
+    return {
+      mercado_id: mercado.id,
+      mercado_nombre: mercado.nombre_mercado,
+      mercado_activo: mercado.isActive,
+      total_locales: totalLocales,
+      locales_ocupados: localesOcupados,
+      locales_libres: localesLibres,
+      ocupacion_percentage: Math.round(ocupacionPercentage * 100) / 100,
+      total_recaudado: Number(recaudacionTotal._sum?.monto) || 0,
+    };
   }
 }

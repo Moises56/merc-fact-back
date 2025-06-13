@@ -197,4 +197,19 @@ export class MercadosController {
   ) {
     return this.mercadosService.getLocalesByMercado(id, estado, tipo);
   }
+
+  @Get(':id/stats')
+  @Roles(Role.ADMIN, Role.MARKET, Role.USER)
+  @ApiOperation({ summary: 'Obtener estadísticas específicas de un mercado' })
+  @ApiResponse({
+    status: 200,
+    description: 'Estadísticas del mercado obtenidas exitosamente',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Mercado no encontrado',
+  })
+  getMercadoStatsById(@Param('id') id: string) {
+    return this.mercadosService.getMercadoStatsById(id);
+  }
 }
