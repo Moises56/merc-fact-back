@@ -53,7 +53,6 @@ async function bootstrap() {
     optionsSuccessStatus: 204,
     allowedHeaders: 'Origin,X-Requested-With,Content-Type,Accept,Authorization',
   });
-
   // Configuración de Swagger
   const config = new DocumentBuilder()
     .setTitle('Sistema de Gestión de Mercados')
@@ -68,6 +67,7 @@ async function bootstrap() {
     .addTag('locales', 'Gestión de locales comerciales')
     .addTag('facturas', 'Gestión de facturas y facturación')
     .addTag('audit', 'Auditoría del sistema')
+    .addTag('Dashboard', 'Estadísticas y métricas del dashboard')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

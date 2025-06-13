@@ -10,14 +10,15 @@ import { MercadosModule } from './api/mercados/mercados.module';
 import { LocalesModule } from './api/locales/locales.module';
 import { FacturasModule } from './api/facturas/facturas.module';
 import { AuditModule } from './api/audit/audit.module';
+import { DashboardModule } from './api/dashboard/dashboard.module';
 import { SeedModule } from './seed/seed.module';
 
-@Module({
-  imports: [
+@Module({  imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
-    }),    ThrottlerModule.forRoot([
+    }),
+    ThrottlerModule.forRoot([
       {
         ttl: 60000,
         limit: 10,
@@ -30,9 +31,9 @@ import { SeedModule } from './seed/seed.module';
     LocalesModule,
     FacturasModule,
     AuditModule,
+    DashboardModule,
     SeedModule,
-  ],
-  controllers: [AppController],
+  ],  controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}

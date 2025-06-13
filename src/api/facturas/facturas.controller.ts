@@ -26,6 +26,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { GetUser } from '../../common/decorators/get-user.decorator';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 import { Role, EstadoFactura } from '../../common/enums';
 import { User } from '@prisma/client';
 
@@ -35,9 +36,9 @@ import { User } from '@prisma/client';
 @ApiBearerAuth()
 export class FacturasController {
   constructor(private readonly facturasService: FacturasService) {}
-
   @Post()
   @Roles(Role.ADMIN, Role.MARKET, Role.USER)
+  @AuditLog({ action: 'CREATE', table: 'facturas' })
   @ApiOperation({ summary: 'Crear una nueva factura' })
   @ApiResponse({ status: 201, description: 'Factura creada exitosamente' })
   @ApiResponse({ status: 400, description: 'Datos inválidos' })
@@ -134,9 +135,9 @@ export class FacturasController {
   update(@Param('id') id: string, @Body() updateFacturaDto: UpdateFacturaDto) {
     return this.facturasService.update(id, updateFacturaDto);
   }
-
   @Patch(':id/pay')
   @Roles(Role.ADMIN, Role.MARKET)
+  @AuditLog({ action: 'PAYMENT', table: 'facturas' })
   @ApiOperation({ summary: 'Marcar factura como pagada' })
   @ApiResponse({ status: 200, description: 'Factura marcada como pagada' })
   @ApiResponse({ status: 400, description: 'La factura ya está pagada' })
@@ -147,6 +148,7 @@ export class FacturasController {
 
   @Post('massive')
   @Roles(Role.ADMIN, Role.MARKET)
+  @AuditLog({ action: 'MASSIVE_CREATE', table: 'facturas' })
   @ApiOperation({ summary: 'Generar facturas masivas para un mercado' })
   @ApiResponse({ status: 201, description: 'Facturas generadas exitosamente' })
   @ApiResponse({

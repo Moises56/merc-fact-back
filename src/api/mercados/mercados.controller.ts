@@ -25,6 +25,7 @@ import { UpdateMercadoDto } from './dto/update-mercado.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 import { Role } from '../../common/enums';
 
 @ApiTags('mercados')
@@ -33,9 +34,9 @@ import { Role } from '../../common/enums';
 @ApiBearerAuth()
 export class MercadosController {
   constructor(private readonly mercadosService: MercadosService) {}
-
   @Post()
   @Roles(Role.ADMIN)
+  @AuditLog({ action: 'CREATE', table: 'mercados' })
   @ApiOperation({ summary: 'Crear nuevo mercado' })
   @ApiResponse({
     status: 201,
@@ -111,9 +112,9 @@ export class MercadosController {
   findOne(@Param('id') id: string) {
     return this.mercadosService.findOne(id);
   }
-
   @Patch(':id')
   @Roles(Role.ADMIN)
+  @AuditLog({ action: 'UPDATE', table: 'mercados' })
   @ApiOperation({ summary: 'Actualizar mercado' })
   @ApiResponse({
     status: 200,
@@ -130,9 +131,9 @@ export class MercadosController {
   update(@Param('id') id: string, @Body() updateMercadoDto: UpdateMercadoDto) {
     return this.mercadosService.update(id, updateMercadoDto);
   }
-
   @Delete(':id')
   @Roles(Role.ADMIN)
+  @AuditLog({ action: 'DELETE', table: 'mercados' })
   @ApiOperation({ summary: 'Desactivar mercado' })
   @ApiResponse({
     status: 200,
@@ -152,6 +153,7 @@ export class MercadosController {
 
   @Patch(':id/activate')
   @Roles(Role.ADMIN)
+  @AuditLog({ action: 'ACTIVATE', table: 'mercados' })
   @ApiOperation({ summary: 'Activar mercado' })
   @ApiResponse({
     status: 200,
