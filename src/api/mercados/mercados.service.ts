@@ -223,11 +223,13 @@ export class MercadosService {
     await this.prisma.mercado.update({
       where: { id },
       data: { isActive: true },
-    });    return {
+    });
+    return {
       message: 'Mercado activado exitosamente',
       data: { id, isActive: true },
     };
-  }  async getMercadoStats() {
+  }
+  async getMercadoStats() {
     const totalMercados = await this.prisma.mercado.count({
       where: { isActive: true },
     });
@@ -255,7 +257,7 @@ export class MercadosService {
           isActive: true,
         },
       },
-    });    // Recaudación total general (de todos los mercados)
+    }); // Recaudación total general (de todos los mercados)
     const recaudacionTotal = await this.prisma.factura.aggregate({
       _sum: { monto: true },
       where: {
@@ -337,7 +339,8 @@ export class MercadosService {
       filtros_aplicados: {
         estado: estado || null,
         tipo: tipo || null,
-      },    };
+      },
+    };
   }
 
   async getMercadoStatsById(id: string) {
@@ -356,47 +359,42 @@ export class MercadosService {
     }
 
     // Obtener estadísticas del mercado específico
-    const [
-      totalLocales,
-      localesOcupados,
-      localesLibres,
-      recaudacionTotal,
-    ] = await Promise.all([
-      // Total de locales en este mercado
-      this.prisma.local.count({
-        where: { mercadoId: id },
-      }),
+    const [totalLocales, localesOcupados, localesLibres, recaudacionTotal] =
+      await Promise.all([
+        // Total de locales en este mercado
+        this.prisma.local.count({
+          where: { mercadoId: id },
+        }),
 
-      // Locales ocupados en este mercado
-      this.prisma.local.count({
-        where: {
-          mercadoId: id,
-          estado_local: 'OCUPADO',
-        },
-      }),
-
-      // Locales libres en este mercado
-      this.prisma.local.count({
-        where: {
-          mercadoId: id,
-          estado_local: 'DISPONIBLE',
-        },
-      }),      // Recaudación total del mercado
-      this.prisma.factura.aggregate({
-        _sum: { monto: true },
-        where: {
-          estado: 'PAGADO',
-          local: {
+        // Locales ocupados en este mercado
+        this.prisma.local.count({
+          where: {
             mercadoId: id,
+            estado_local: 'OCUPADO',
           },
-        },
-      }),
-    ]);
+        }),
+
+        // Locales libres en este mercado
+        this.prisma.local.count({
+          where: {
+            mercadoId: id,
+            estado_local: 'DISPONIBLE',
+          },
+        }), // Recaudación total del mercado
+        this.prisma.factura.aggregate({
+          _sum: { monto: true },
+          where: {
+            estado: 'PAGADO',
+            local: {
+              mercadoId: id,
+            },
+          },
+        }),
+      ]);
 
     // Calcular porcentaje de ocupación
-    const ocupacionPercentage = totalLocales > 0 
-      ? (localesOcupados / totalLocales) * 100 
-      : 0;
+    const ocupacionPercentage =
+      totalLocales > 0 ? (localesOcupados / totalLocales) * 100 : 0;
 
     return {
       mercado_id: mercado.id,
