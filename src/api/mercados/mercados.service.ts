@@ -185,7 +185,7 @@ export class MercadosService {
     const activeLocales = await this.prisma.local.count({
       where: {
         mercadoId: id,
-        estado_local: 'OCUPADO',
+        estado_local: 'ACTIVO',
       },
     });
     if (activeLocales > 0) {
@@ -248,16 +248,14 @@ export class MercadosService {
     const totalLocales = mercadosWithLocales.reduce(
       (sum: number, mercado) => sum + (mercado._count?.locales || 0),
       0,
-    );
-
-    const ocupiedLocales = await this.prisma.local.count({
+    );    const ocupiedLocales = await this.prisma.local.count({
       where: {
-        estado_local: 'OCUPADO',
+        estado_local: 'ACTIVO',
         mercado: {
           isActive: true,
         },
       },
-    }); // Recaudación total general (de todos los mercados)
+    });// Recaudación total general (de todos los mercados)
     const recaudacionTotal = await this.prisma.factura.aggregate({
       _sum: { monto: true },
       where: {
@@ -342,7 +340,6 @@ export class MercadosService {
       },
     };
   }
-
   async getMercadoStatsById(id: string) {
     // Verificar que el mercado existe
     const mercado = await this.prisma.mercado.findUnique({
@@ -359,52 +356,65 @@ export class MercadosService {
     }
 
     // Obtener estadísticas del mercado específico
-    const [totalLocales, localesOcupados, localesLibres, recaudacionTotal] =
-      await Promise.all([
-        // Total de locales en este mercado
-        this.prisma.local.count({
-          where: { mercadoId: id },
-        }),
+    const [
+      totalLocales,
+      localesOcupados,
+      recaudacionTotal,
+      facturasDelMercado,
+    ] = await Promise.all([
+      // Total de locales en este mercado
+      this.prisma.local.count({
+        where: { mercadoId: id },
+      }),      // Locales ocupados en este mercado
+      this.prisma.local.count({
+        where: {
+          mercadoId: id,
+          estado_local: 'ACTIVO',
+        },
+      }),
 
-        // Locales ocupados en este mercado
-        this.prisma.local.count({
-          where: {
+      // Recaudación total del mercado
+      this.prisma.factura.aggregate({
+        _sum: { monto: true },
+        where: {
+          estado: 'PAGADO',
+          local: {
             mercadoId: id,
-            estado_local: 'OCUPADO',
           },
-        }),
+        },
+      }),
 
-        // Locales libres en este mercado
-        this.prisma.local.count({
-          where: {
+      // Obtener facturas para calcular monto promedio
+      this.prisma.factura.findMany({
+        where: {
+          local: {
             mercadoId: id,
-            estado_local: 'DISPONIBLE',
           },
-        }), // Recaudación total del mercado
-        this.prisma.factura.aggregate({
-          _sum: { monto: true },
-          where: {
-            estado: 'PAGADO',
-            local: {
-              mercadoId: id,
-            },
-          },
-        }),
-      ]);
+        },
+        select: {
+          monto: true,
+          estado: true,
+        },
+      }),
+    ]);
 
-    // Calcular porcentaje de ocupación
-    const ocupacionPercentage =
-      totalLocales > 0 ? (localesOcupados / totalLocales) * 100 : 0;
+    // Calcular monto promedio mensual por local
+    const montoPromedio = facturasDelMercado.length > 0 
+      ? facturasDelMercado.reduce((sum, f) => sum + Number(f.monto), 0) / facturasDelMercado.length
+      : 300; // Valor por defecto si no hay facturas
+
+    // Calcular recaudación esperada
+    const totalEsperadoMensual = localesOcupados * montoPromedio;
+    const totalEsperadoAnual = totalEsperadoMensual * 12;
 
     return {
       mercado_id: mercado.id,
       mercado_nombre: mercado.nombre_mercado,
       mercado_activo: mercado.isActive,
       total_locales: totalLocales,
-      locales_ocupados: localesOcupados,
-      locales_libres: localesLibres,
-      ocupacion_percentage: Math.round(ocupacionPercentage * 100) / 100,
       total_recaudado: Number(recaudacionTotal._sum?.monto) || 0,
+      total_esperado_mensual: Math.round(totalEsperadoMensual * 100) / 100,
+      total_esperado_anual: Math.round(totalEsperadoAnual * 100) / 100,
     };
   }
 }
