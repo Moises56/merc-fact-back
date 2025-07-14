@@ -22,8 +22,8 @@ export class DashboardService {
         entityMetrics,
       ] = await Promise.all([
         this.getFinancialMetrics(),
-        this.getInvoiceMetrics(),
-        this.getEntityMetrics(),
+        this.getEnhancedInvoiceMetrics(),
+        this.getEnhancedEntityMetrics(),
       ]);
 
       return {
@@ -59,7 +59,7 @@ export class DashboardService {
           fecha_pago: {
             gte: startOfMonth,
           },
-          estado: 'PAGADO',
+          estado: 'PAGADA',
         },
       }),
 
@@ -70,7 +70,7 @@ export class DashboardService {
           fecha_pago: {
             gte: startOfYear,
           },
-          estado: 'PAGADO',
+          estado: 'PAGADA',
         },
       }),
 
@@ -78,12 +78,12 @@ export class DashboardService {
       this.prisma.factura.aggregate({
         _sum: { monto: true },
         where: {
-          estado: 'PAGADO',
+          estado: 'PAGADA',
         },
       }),      // Datos para recaudación por local (necesitamos hacer join con local)
       this.prisma.factura.findMany({
         where: {
-          estado: 'PAGADO',
+          estado: 'PAGADA',
         },
         include: {
           local: {
@@ -95,8 +95,18 @@ export class DashboardService {
       }),
     ]);
 
-    // Procesar recaudación por mercado
-    const marketRevenueMap = new Map<string, { name: string; total: number }>();
+    // Procesar recaudación por mercado con más detalles
+    const marketRevenueMap = new Map<
+      string,
+      {
+        name: string;
+        total: number;
+        monthly: number;
+        annual: number;
+        totalLocals: number;
+        paidInvoices: number;
+      }
+    >();
     const localRevenueArray: LocalRevenueDto[] = [];
 
     // Procesar datos de locales y agregar por mercado
@@ -107,14 +117,49 @@ export class DashboardService {
           localId: factura.local.id,
           localName: factura.local.nombre_local || 'Sin nombre',
           total: Number(factura.monto),
-        });        // Agregar al mercado
+        });
+
+        // Agregar al mercado con más detalles
         const marketId = factura.local.mercado.id;
         const marketName = factura.local.mercado.nombre_mercado;
-        const currentTotal = marketRevenueMap.get(marketId)?.total || 0;
+        const current = marketRevenueMap.get(marketId) || {
+          name: marketName,
+          total: 0,
+          monthly: 0,
+          annual: 0,
+          totalLocals: 0,
+          paidInvoices: 0,
+        };
+
+        // Verificar si es del mes/año actual
+        const facturaDate = factura.fecha_pago || factura.createdAt;
+        const isCurrentMonth = facturaDate >= startOfMonth;
+        const isCurrentYear = facturaDate >= startOfYear;
 
         marketRevenueMap.set(marketId, {
           name: marketName,
-          total: currentTotal + Number(factura.monto),
+          total: current.total + Number(factura.monto),
+          monthly: current.monthly + (isCurrentMonth ? Number(factura.monto) : 0),
+          annual: current.annual + (isCurrentYear ? Number(factura.monto) : 0),
+          totalLocals: current.totalLocals,
+          paidInvoices: current.paidInvoices + 1,
+        });
+      }
+    });
+
+    // Obtener el conteo de locales por mercado
+    const localesByMarket = await this.prisma.local.groupBy({
+      by: ['mercadoId'],
+      _count: { id: true },
+    });
+
+    // Agregar el conteo de locales a cada mercado
+    localesByMarket.forEach((group) => {
+      const current = marketRevenueMap.get(group.mercadoId);
+      if (current) {
+        marketRevenueMap.set(group.mercadoId, {
+          ...current,
+          totalLocals: group._count.id,
         });
       }
     });
@@ -127,6 +172,16 @@ export class DashboardService {
         marketId,
         marketName: data.name,
         total: data.total,
+        monthly: data.monthly,
+        annual: data.annual,
+        totalLocals: data.totalLocals,
+        paidInvoices: data.paidInvoices,
+        averageRevenuePerLocal: data.totalLocals > 0 
+          ? Math.round((data.total / data.totalLocals) * 100) / 100 
+          : 0,
+        percentageOfTotalRevenue: Number(totalRevenue._sum?.monto) > 0 
+          ? Math.round((data.total / Number(totalRevenue._sum?.monto)) * 100 * 100) / 100
+          : 0,
       }))
       .sort((a, b) => b.total - a.total);
 
@@ -151,10 +206,20 @@ export class DashboardService {
       revenueByLocal: revenueByLocalSorted,
     };
   }
-  private async getInvoiceMetrics(): Promise<InvoiceMetricsDto> {
+
+
+  private async getEnhancedInvoiceMetrics(): Promise<InvoiceMetricsDto> {
     const currentDate = new Date();
 
-    const [overdueCount, paidCount, totalCount] = await Promise.all([
+    const [
+      overdueCount,
+      paidCount,
+      pendingCount,
+      cancelledCount,
+      totalCount,
+      pendingAmount,
+      overdueAmount,
+    ] = await Promise.all([
       // Facturas vencidas
       this.prisma.factura.count({
         where: {
@@ -162,7 +227,7 @@ export class DashboardService {
             lt: currentDate,
           },
           estado: {
-            not: 'PAGADO',
+            not: 'PAGADA',
           },
         },
       }),
@@ -170,32 +235,127 @@ export class DashboardService {
       // Facturas pagadas
       this.prisma.factura.count({
         where: {
-          estado: 'PAGADO',
+          estado: 'PAGADA',
+        },
+      }),
+
+      // Facturas pendientes
+      this.prisma.factura.count({
+        where: {
+          estado: 'PENDIENTE',
+        },
+      }),
+
+      // Facturas anuladas
+      this.prisma.factura.count({
+        where: {
+          estado: 'ANULADA',
         },
       }),
 
       // Total de facturas generadas
       this.prisma.factura.count(),
+
+      // Monto total pendiente
+      this.prisma.factura.aggregate({
+        _sum: { monto: true },
+        where: {
+          estado: 'PENDIENTE',
+        },
+      }),
+
+      // Monto total vencido
+      this.prisma.factura.aggregate({
+        _sum: { monto: true },
+        where: {
+          fecha_vencimiento: {
+            lt: currentDate,
+          },
+          estado: {
+            not: 'PAGADA',
+          },
+        },
+      }),
     ]);
+
+    // Calcular métricas adicionales
+    const paymentRate = totalCount > 0 ? (paidCount / totalCount) * 100 : 0;
+    const overdueRate = totalCount > 0 ? (overdueCount / totalCount) * 100 : 0;
+    const collectionEfficiency = totalCount > 0 ? (paidCount / totalCount) * 100 : 0;
 
     return {
       overdue: overdueCount,
       paid: paidCount,
+      pending: pendingCount,
+      cancelled: cancelledCount,
       generated: totalCount,
+      paymentRate: Math.round(paymentRate * 100) / 100,
+      overdueRate: Math.round(overdueRate * 100) / 100,
+      collectionEfficiency: Math.round(collectionEfficiency * 100) / 100,
+      pendingAmount: Number(pendingAmount._sum?.monto) || 0,
+      overdueAmount: Number(overdueAmount._sum?.monto) || 0,
     };
   }
 
-  private async getEntityMetrics(): Promise<EntityMetricsDto> {
-    const [totalMarkets, totalLocals, totalUsers] = await Promise.all([
+
+
+  private async getEnhancedEntityMetrics(): Promise<EntityMetricsDto> {
+    const startOfMonth = new Date(
+      new Date().getFullYear(),
+      new Date().getMonth(),
+      1,
+    );
+
+    const [
+      totalMarkets,
+      activeMarkets,
+      totalLocals,
+      activeLocals,
+      totalUsers,
+      activeUsers,
+      localsWithPaymentsThisMonth,
+    ] = await Promise.all([
       this.prisma.mercado.count(),
+      this.prisma.mercado.count({
+        where: { isActive: true },
+      }),
       this.prisma.local.count(),
+      this.prisma.local.count({
+        where: { estado_local: 'ACTIVO' },
+      }),
       this.prisma.user.count(),
+      this.prisma.user.count({
+        where: { isActive: true },
+      }),
+      // Locales que han tenido pagos este mes
+      this.prisma.local.count({
+        where: {
+          facturas: {
+            some: {
+              estado: 'PAGADA',
+              fecha_pago: {
+                gte: startOfMonth,
+              },
+            },
+          },
+        },
+      }),
     ]);
+
+    // Calcular métricas derivadas
+    const occupancyRate = totalLocals > 0 ? (activeLocals / totalLocals) * 100 : 0;
+    const averageLocalsPerMarket = totalMarkets > 0 ? totalLocals / totalMarkets : 0;
 
     return {
       totalMarkets,
+      activeMarkets,
       totalLocals,
+      activeLocals,
       totalUsers,
+      activeUsers,
+      occupancyRate: Math.round(occupancyRate * 100) / 100,
+      averageLocalsPerMarket: Math.round(averageLocalsPerMarket * 100) / 100,
+      localsWithPaymentsThisMonth,
     };
   }
 }

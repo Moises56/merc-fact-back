@@ -1,4 +1,10 @@
-import { Controller, Get, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -20,9 +26,10 @@ export class DashboardController {
   @Get('statistics')
   @HttpCode(HttpStatus.OK)
   @AuditLog({ action: 'VIEW_STATISTICS', table: 'dashboard' })
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Obtener estadísticas del dashboard',
-    description: 'Retorna métricas financieras, de facturación y entidades del sistema'
+    description:
+      'Retorna métricas financieras, de facturación y entidades del sistema',
   })
   @ApiResponse({
     status: 200,

@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
+// DTOs existentes mejorados
 export class MarketRevenueDto {
   @ApiProperty({ description: 'ID del mercado' })
   marketId: string;
@@ -16,17 +17,11 @@ export class MarketRevenueDto {
   @ApiProperty({ description: 'Recaudación anual' })
   annual: number;
 
-  @ApiProperty({ description: 'Número de locales' })
+  @ApiProperty({ description: 'Número de locales en el mercado' })
   totalLocals: number;
 
-  @ApiProperty({ description: 'Facturas pagadas' })
+  @ApiProperty({ description: 'Número de facturas pagadas' })
   paidInvoices: number;
-
-  @ApiProperty({ description: 'Promedio por local' })
-  averageRevenuePerLocal: number;
-
-  @ApiProperty({ description: 'Porcentaje del total' })
-  percentageOfTotalRevenue: number;
 }
 
 export class LocalRevenueDto {
@@ -50,15 +45,15 @@ export class FinancialMetricsDto {
   @ApiProperty({ description: 'Total recaudado histórico' })
   totalRevenue: number;
 
-  @ApiProperty({ 
-    description: 'Recaudación por mercado', 
-    type: [MarketRevenueDto] 
+  @ApiProperty({
+    description: 'Recaudación por mercado',
+    type: [MarketRevenueDto],
   })
   revenueByMarket: MarketRevenueDto[];
 
-  @ApiProperty({ 
-    description: 'Recaudación por local', 
-    type: [LocalRevenueDto] 
+  @ApiProperty({
+    description: 'Recaudación por local',
+    type: [LocalRevenueDto],
   })
   revenueByLocal: LocalRevenueDto[];
 }
@@ -78,21 +73,6 @@ export class InvoiceMetricsDto {
 
   @ApiProperty({ description: 'Total de facturas generadas' })
   generated: number;
-
-  @ApiProperty({ description: 'Porcentaje de pago' })
-  paymentRate: number;
-
-  @ApiProperty({ description: 'Porcentaje de morosidad' })
-  overdueRate: number;
-
-  @ApiProperty({ description: 'Eficiencia de cobranza' })
-  collectionEfficiency: number;
-
-  @ApiProperty({ description: 'Monto total pendiente' })
-  pendingAmount: number;
-
-  @ApiProperty({ description: 'Monto total vencido' })
-  overdueAmount: number;
 }
 
 export class EntityMetricsDto {
@@ -113,24 +93,16 @@ export class EntityMetricsDto {
 
   @ApiProperty({ description: 'Usuarios activos' })
   activeUsers: number;
-
-  @ApiProperty({ description: 'Tasa de ocupación (%)' })
-  occupancyRate: number;
-
-  @ApiProperty({ description: 'Promedio locales por mercado' })
-  averageLocalsPerMarket: number;
-
-  @ApiProperty({ description: 'Locales con pagos este mes' })
-  localsWithPaymentsThisMonth: number;
 }
 
+// Nuevo DTO para el dashboard mejorado
 export class DashboardStatisticsDto {
-  @ApiProperty({ description: 'Métricas financieras' })
+  @ApiProperty({ description: 'Métricas financieras', type: FinancialMetricsDto })
   financial: FinancialMetricsDto;
 
-  @ApiProperty({ description: 'Métricas de facturación' })
+  @ApiProperty({ description: 'Métricas de facturación', type: InvoiceMetricsDto })
   invoices: InvoiceMetricsDto;
 
-  @ApiProperty({ description: 'Métricas de entidades' })
+  @ApiProperty({ description: 'Métricas de entidades', type: EntityMetricsDto })
   entities: EntityMetricsDto;
 }
