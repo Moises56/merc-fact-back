@@ -248,14 +248,15 @@ export class MercadosService {
     const totalLocales = mercadosWithLocales.reduce(
       (sum: number, mercado) => sum + (mercado._count?.locales || 0),
       0,
-    );    const ocupiedLocales = await this.prisma.local.count({
+    );
+    const ocupiedLocales = await this.prisma.local.count({
       where: {
         estado_local: 'ACTIVO',
         mercado: {
           isActive: true,
         },
       },
-    });// Recaudación total general (de todos los mercados)
+    }); // Recaudación total general (de todos los mercados)
     const recaudacionTotal = await this.prisma.factura.aggregate({
       _sum: { monto: true },
       where: {
@@ -365,7 +366,7 @@ export class MercadosService {
       // Total de locales en este mercado
       this.prisma.local.count({
         where: { mercadoId: id },
-      }),      // Locales ocupados en este mercado
+      }), // Locales ocupados en este mercado
       this.prisma.local.count({
         where: {
           mercadoId: id,
@@ -377,7 +378,7 @@ export class MercadosService {
       this.prisma.factura.aggregate({
         _sum: { monto: true },
         where: {
-          estado: 'PAGADO',
+          estado: 'PAGADA',
           local: {
             mercadoId: id,
           },
@@ -399,9 +400,11 @@ export class MercadosService {
     ]);
 
     // Calcular monto promedio mensual por local
-    const montoPromedio = facturasDelMercado.length > 0 
-      ? facturasDelMercado.reduce((sum, f) => sum + Number(f.monto), 0) / facturasDelMercado.length
-      : 300; // Valor por defecto si no hay facturas
+    const montoPromedio =
+      facturasDelMercado.length > 0
+        ? facturasDelMercado.reduce((sum, f) => sum + Number(f.monto), 0) /
+          facturasDelMercado.length
+        : 300; // Valor por defecto si no hay facturas
 
     // Calcular recaudación esperada
     const totalEsperadoMensual = localesOcupados * montoPromedio;
