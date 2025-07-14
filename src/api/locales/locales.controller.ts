@@ -22,6 +22,7 @@ import {
 import { LocalesService } from './locales.service';
 import { CreateLocaleDto } from './dto/create-local.dto';
 import { UpdateLocalDto } from './dto/update-local.dto';
+import { LocalStatsResponseDto } from './dto/local-stats-response.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -107,6 +108,19 @@ export class LocalesController {
   })
   getStats() {
     return this.localesService.getLocalStats();
+  }
+
+  @Get(':id/stats')
+  @Roles(Role.ADMIN, Role.MARKET, Role.USER)
+  @ApiOperation({ summary: 'Obtener estadísticas de un local específico' })
+  @ApiResponse({
+    status: 200,
+    description: 'Estadísticas del local obtenidas exitosamente',
+    type: LocalStatsResponseDto,
+  })
+  @ApiResponse({ status: 404, description: 'Local no encontrado' })
+  getLocalStats(@Param('id') id: string) {
+    return this.localesService.getLocalStatsById(id);
   }
 
   @Get(':id')

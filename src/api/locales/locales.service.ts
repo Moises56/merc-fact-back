@@ -321,7 +321,8 @@ export class LocalesService {
       locales_activos: localesActivos,
       locales_inactivos: localesInactivos,
       locales_suspendidos: localesSuspendidos,
-      locales_pendientes: localesPendientes,      porcentaje_activos:
+      locales_pendientes: localesPendientes,
+      porcentaje_activos:
         totalLocales > 0 ? (localesActivos / totalLocales) * 100 : 0,
       estadisticas_por_tipo: estadisticasPorTipo.reduce((acc, item) => {
         const tipoLocal = item.tipo_local || 'SIN_TIPO';
@@ -374,6 +375,126 @@ export class LocalesService {
         per_page: limit,
         total,
         total_pages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async getLocalStatsById(id: string) {
+    // Verificar que el local existe
+    const local = await this.prisma.local.findUnique({
+      where: { id },
+      include: {
+        mercado: {
+          select: {
+            id: true,
+            nombre_mercado: true,
+          },
+        },
+      },
+    });
+
+    if (!local) {
+      throw new NotFoundException('Local no encontrado');
+    }
+
+    const [
+      totalFacturas,
+      facturasPendientes,
+      facturasPagadas,
+      facturasVencidas,
+      facturasAnuladas,
+      totalRecaudado,
+      montoTotal,
+    ] = await Promise.all([
+      // Total de facturas del local
+      this.prisma.factura.count({
+        where: { localId: id },
+      }),
+
+      // Facturas pendientes
+      this.prisma.factura.count({
+        where: { 
+          localId: id,
+          estado: 'PENDIENTE',
+        },
+      }),
+
+      // Facturas pagadas
+      this.prisma.factura.count({
+        where: { 
+          localId: id,
+          estado: 'PAGADA',
+        },
+      }),
+
+      // Facturas vencidas
+      this.prisma.factura.count({
+        where: { 
+          localId: id,
+          estado: 'VENCIDA',
+        },
+      }),
+
+      // Facturas anuladas
+      this.prisma.factura.count({
+        where: { 
+          localId: id,
+          estado: 'ANULADA',
+        },
+      }),
+
+      // Total recaudado (facturas pagadas)
+      this.prisma.factura.aggregate({
+        _sum: { monto: true },
+        where: { 
+          localId: id,
+          estado: 'PAGADA',
+        },
+      }),
+
+      // Monto total de todas las facturas
+      this.prisma.factura.aggregate({
+        _sum: { monto: true },
+        where: { localId: id },
+      }),
+    ]);
+
+    // Calcular recaudo esperado
+    const montoMensual = Number(local.monto_mensual) || 0;
+    const recaudoEsperadoMensual = montoMensual;
+    const recaudoEsperadoAnual = montoMensual * 12;
+
+    // Convertir valores Decimal a número
+    const totalRecaudadoValue = Number(totalRecaudado._sum?.monto) || 0;
+    const montoTotalValue = Number(montoTotal._sum?.monto) || 0;
+
+    return {
+      local_id: local.id,
+      local_nombre: local.nombre_local || 'Sin nombre',
+      local_numero: local.numero_local || 'Sin número',
+      local_estado: local.estado_local,
+      mercado: {
+        id: local.mercado.id,
+        nombre: local.mercado.nombre_mercado,
+      },
+      estadisticas_facturas: {
+        total_facturas: totalFacturas,
+        facturas_pendientes: facturasPendientes,
+        facturas_pagadas: facturasPagadas,
+        facturas_vencidas: facturasVencidas,
+        facturas_anuladas: facturasAnuladas,
+      },
+      estadisticas_financieras: {
+        total_recaudado: totalRecaudadoValue,
+        monto_total_facturas: montoTotalValue,
+        monto_pendiente: montoTotalValue - totalRecaudadoValue,
+        recaudo_esperado_mensual: recaudoEsperadoMensual,
+        recaudo_esperado_anual: recaudoEsperadoAnual,
+        porcentaje_recaudacion:
+          montoTotalValue > 0
+            ? Math.round((totalRecaudadoValue / montoTotalValue) * 100 * 100) /
+              100
+            : 0,
       },
     };
   }
