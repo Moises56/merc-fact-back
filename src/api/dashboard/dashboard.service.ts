@@ -198,10 +198,33 @@ export class DashboardService {
       }, [] as LocalRevenueDto[])
       .sort((a, b) => b.total - a.total);
 
+    // Calcular totales esperados de recaudación
+    const [expectedMonthlyRevenue, expectedAnnualRevenue] = await Promise.all([
+      // Total esperado mensual: suma de todos los locales activos
+      this.prisma.local.aggregate({
+        _sum: { monto_mensual: true },
+        where: {
+          estado_local: 'ACTIVO',
+        },
+      }),
+      // Total esperado anual: suma mensual * 12
+      this.prisma.local.aggregate({
+        _sum: { monto_mensual: true },
+        where: {
+          estado_local: 'ACTIVO',
+        },
+      }),
+    ]);
+
+    const expectedMonthly = Number(expectedMonthlyRevenue._sum?.monto_mensual) || 0;
+    const expectedAnnual = expectedMonthly * 12;
+
     return {
       monthlyRevenue: Number(monthlyRevenue._sum?.monto) || 0,
       annualRevenue: Number(annualRevenue._sum?.monto) || 0,
       totalRevenue: Number(totalRevenue._sum?.monto) || 0,
+      expectedMonthlyRevenue: expectedMonthly,
+      expectedAnnualRevenue: expectedAnnual,
       revenueByMarket: revenueByMarketArray,
       revenueByLocal: revenueByLocalSorted,
     };

@@ -50,6 +50,12 @@ export class FinancialMetricsDto {
   @ApiProperty({ description: 'Total recaudado histórico' })
   totalRevenue: number;
 
+  @ApiProperty({ description: 'Total esperado a recaudar mensualmente' })
+  expectedMonthlyRevenue: number;
+
+  @ApiProperty({ description: 'Total esperado a recaudar anualmente' })
+  expectedAnnualRevenue: number;
+
   @ApiProperty({ 
     description: 'Recaudación por mercado', 
     type: [MarketRevenueDto] 
