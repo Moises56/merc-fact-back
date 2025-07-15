@@ -23,6 +23,7 @@ import {
 } from './dto/create-auth.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { GetUser } from '../../common/decorators/get-user.decorator';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 import { User } from '@prisma/client';
 
 @ApiTags('Autenticación')
@@ -32,6 +33,7 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @AuditLog({ action: 'LOGIN', table: 'auth' })
   @ApiOperation({ summary: 'Iniciar sesión' })
   @ApiResponse({
     status: 200,
@@ -45,7 +47,9 @@ export class AuthController {
     @Body() loginDto: LoginDto,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const result = await this.authService.login(loginDto);    // Set HTTP-only cookies
+    const result = await this.authService.login(loginDto);
+
+    // Set HTTP-only cookies
     response.cookie('access_token', result.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -101,6 +105,7 @@ export class AuthController {
   }
 
   @Post('logout')
+  @AuditLog({ action: 'LOGOUT', table: 'auth' })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Cerrar sesión' })
   @ApiResponse({

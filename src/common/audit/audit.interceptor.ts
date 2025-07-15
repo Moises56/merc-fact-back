@@ -36,41 +36,87 @@ export class AuditInterceptor implements NestInterceptor {
     const request = context.switchToHttp().getRequest();
     const { user, body, params, method, ip, headers } = request;
 
-    // Capturar datos antes de la operación
+    // Extraer userId correctamente del JWT payload
+    let userId = user?.userId || user?.sub || user?.id || null;
+    
+    // Para el endpoint de login, obtener el userId del resultado
+    if (auditOptions.action === 'LOGIN' && !userId) {
+      // En este caso, obtendremos el userId del resultado del login
+      userId = 'pending'; // Marcador temporal
+    }
+    
+    // Log para debug
+    console.log('🔍 Audit Debug - User:', user);
+    console.log(
+      `🔍 Audit Debug - UserId extracted: ${userId}, Action: ${auditOptions.action}, Table: ${auditOptions.table}`,
+    );
 
-    const beforeData = method === 'PUT' || method === 'PATCH' ? body : null;
+    // Si no hay usuario autenticado y no es LOGIN, no hacer logging
+    if (!userId && auditOptions.action !== 'LOGIN') {
+      console.log(
+        `⚠️ Skipping audit log - No authenticated user for action: ${auditOptions.action}`,
+      );
+      return next.handle();
+    }
+
+    // Capturar datos antes de la operación (limitando tamaño)
+    const beforeData =
+      method === 'PUT' || method === 'PATCH'
+        ? this.limitDataSize(body)
+        : null;
 
     return next.handle().pipe(
       tap({
         next: (result) => {
-          // Log exitoso
-          this.logAuditAction(
-            (user?.sub as string) || 'anonymous',
-            auditOptions.action,
-            auditOptions.table,
-            (params?.id as string) || (result?.id as string),
-            beforeData,
-            result,
-            ip as string,
-            headers?.['user-agent'] as string,
-          );
+          // Para LOGIN, obtener userId del resultado
+          let finalUserId = userId;
+          if (auditOptions.action === 'LOGIN' && result?.user?.id) {
+            finalUserId = result.user.id;
+          }
+          
+          // Log exitoso solo si tenemos un userId válido
+          if (finalUserId && finalUserId !== 'pending') {
+            void this.logAuditAction(
+              finalUserId,
+              auditOptions.action,
+              auditOptions.table,
+              (params?.id as string) || (result?.id as string),
+              beforeData,
+              this.limitDataSize(result),
+              ip as string,
+              (headers?.['user-agent'] as string) || '',
+            );
+          }
         },
 
         error: (error: any) => {
           // Log de error
-          this.logAuditAction(
-            (user?.sub as string) || 'anonymous',
+          void this.logAuditAction(
+            userId || 'anonymous',
             `${auditOptions.action}_ERROR`,
             auditOptions.table,
             params?.id as string,
             beforeData,
             { error: error?.message || 'Unknown error' },
             ip as string,
-            headers?.['user-agent'] as string,
+            (headers?.['user-agent'] as string) || '',
           );
         },
       }),
     );
+  }
+
+  private limitDataSize(data: any): any {
+    if (!data) return data;
+    
+    const dataString = JSON.stringify(data);
+    const maxSize = 1000; // Limit to 1000 characters
+    
+    if (dataString.length > maxSize) {
+      return JSON.stringify(data).substring(0, maxSize) + '... [truncated]';
+    }
+    
+    return data;
   }
 
   private async logAuditAction(

@@ -283,7 +283,9 @@ export class AuditService {
     userAgent?: string,
   ) {
     try {
-      await this.prisma.auditLog.create({
+      console.log(`📝 Creating audit log: ${accion} on ${tabla} by user ${userId}`);
+      
+      const auditLog = await this.prisma.auditLog.create({
         data: {
           userId,
           accion,
@@ -295,9 +297,15 @@ export class AuditService {
           userAgent,
         },
       });
+      
+      console.log(`✅ Audit log created successfully with ID: ${auditLog.id}`);
+      return auditLog;
     } catch (error) {
       // Log the error but don't throw to avoid breaking the main operation
-      console.error('Error creating audit log:', error);
+      console.error('❌ Error creating audit log:', error);
+      console.error('   - UserId:', userId);
+      console.error('   - Action:', accion);
+      console.error('   - Table:', tabla);
     }
   }  // Métodos que no deberían estar disponibles públicamente
   update(): never {

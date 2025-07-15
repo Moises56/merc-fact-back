@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './common/prisma/prisma.module';
@@ -12,8 +13,10 @@ import { FacturasModule } from './api/facturas/facturas.module';
 import { AuditModule } from './api/audit/audit.module';
 import { DashboardModule } from './api/dashboard/dashboard.module';
 import { SeedModule } from './seed/seed.module';
+import { AuditInterceptor } from './common/audit/audit.interceptor';
 
-@Module({  imports: [
+@Module({
+  imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
@@ -33,7 +36,14 @@ import { SeedModule } from './seed/seed.module';
     AuditModule,
     DashboardModule,
     SeedModule,
-  ],  controllers: [AppController],
-  providers: [AppService],
+  ],
+  controllers: [AppController],
+  providers: [
+    AppService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AuditInterceptor,
+    },
+  ],
 })
 export class AppModule {}
