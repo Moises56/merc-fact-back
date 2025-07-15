@@ -285,14 +285,70 @@ export class AuditService {
     try {
       console.log(`📝 Creating audit log: ${accion} on ${tabla} by user ${userId}`);
       
+      // Función para truncar datos JSON si son demasiado largos
+      const truncateJson = (
+        data: any,
+        maxLength: number = 1000, // Reducido a 1000 caracteres para SQL Server
+      ): string | null => {
+        if (!data) return null;
+
+        const jsonString = JSON.stringify(data);
+        if (jsonString.length <= maxLength) {
+          return jsonString;
+        }
+
+        // Para acciones de estadísticas y dashboard, guardamos solo un resumen mínimo
+        if (tabla === 'dashboard' || accion === 'VIEW_STATISTICS') {
+          return JSON.stringify({
+            _truncated: true,
+            _action: accion,
+            _table: tabla,
+            _originalSize: jsonString.length,
+            _timestamp: new Date().toISOString(),
+            _note: 'Large statistics data truncated for audit storage',
+          });
+        }
+
+        // Si es demasiado largo, guardamos solo un resumen
+        if (typeof data === 'object' && data !== null) {
+          const summary = {
+            _truncated: true,
+            _originalLength: jsonString.length,
+            _type: Array.isArray(data) ? 'array' : 'object',
+            _itemCount: Array.isArray(data)
+              ? data.length
+              : Object.keys(data as object).length,
+            _sample: Array.isArray(data)
+              ? data.slice(0, 1) // Solo el primer elemento
+              : Object.fromEntries(Object.entries(data as object).slice(0, 2)), // Solo 2 propiedades
+          };
+          const summaryString = JSON.stringify(summary);
+          
+          // Si el resumen sigue siendo muy largo, truncamos más
+          if (summaryString.length > maxLength) {
+            return JSON.stringify({
+              _truncated: true,
+              _originalLength: jsonString.length,
+              _type: Array.isArray(data) ? 'array' : 'object',
+              _note: 'Data too large for audit storage',
+            });
+          }
+          
+          return summaryString;
+        }
+
+        // Para strings largos, truncamos con elipsis
+        return jsonString.substring(0, maxLength - 20) + '...[TRUNCATED]';
+      };
+      
       const auditLog = await this.prisma.auditLog.create({
         data: {
           userId,
           accion,
           tabla,
           registroId,
-          datosAntes: datosAntes ? JSON.stringify(datosAntes) : null,
-          datosDespues: datosDespues ? JSON.stringify(datosDespues) : null,
+          datosAntes: truncateJson(datosAntes),
+          datosDespues: truncateJson(datosDespues),
           ip,
           userAgent,
         },
@@ -307,7 +363,7 @@ export class AuditService {
       console.error('   - Action:', accion);
       console.error('   - Table:', tabla);
     }
-  }  // Métodos que no deberían estar disponibles públicamente
+  } // Métodos que no deberían estar disponibles públicamente
   update(): never {
     throw new Error('Audit logs cannot be updated');
   }

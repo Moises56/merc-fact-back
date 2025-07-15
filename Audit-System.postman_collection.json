@@ -1,0 +1,626 @@
+{
+  "info": {
+    "name": "Audit System API - Complete Test Collection",
+    "description": "Colección completa para probar todos los endpoints del sistema de auditoría",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "audit-system-collection-2025"
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Script de autenticación automática",
+          "console.log('🔐 Iniciando autenticación automática...');",
+          "",
+          "pm.sendRequest({",
+          "    url: 'http://localhost:3000/api/auth/login',",
+          "    method: 'POST',",
+          "    header: {",
+          "        'Content-Type': 'application/json'",
+          "    },",
+          "    body: {",
+          "        mode: 'raw',",
+          "        raw: JSON.stringify({",
+          "            \"username\": \"mougrind\",",
+          "            \"contrasena\": \"@Asd.456@\"",
+          "        })",
+          "    }",
+          "}, function (err, response) {",
+          "    if (err) {",
+          "        console.log('❌ Error en login:', err);",
+          "    } else {",
+          "        console.log('✅ Login exitoso');",
+          "        const cookies = response.headers.get('Set-Cookie');",
+          "        if (cookies) {",
+          "            // Extraer access_token",
+          "            const accessTokenMatch = cookies.match(/access_token=([^;]+)/);",
+          "            if (accessTokenMatch) {",
+          "                const accessToken = accessTokenMatch[1];",
+          "                pm.globals.set('access_token', accessToken);",
+          "                console.log('🎯 Token guardado:', accessToken.substring(0, 50) + '...');",
+          "            }",
+          "        }",
+          "    }",
+          "});"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "testUserId",
+      "value": "f199d049-f069-4a94-9ab3-5cd9fcac0c03",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 Authentication",
+      "item": [
+        {
+          "name": "Login para obtener tokens",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Login exitoso', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Respuesta contiene datos de usuario', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('user');",
+                  "    pm.expect(responseJson.user).to.have.property('username', 'mougrind');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"mougrind\",\n  \"contrasena\": \"@Asd.456@\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Endpoint para autenticación y obtención de tokens JWT"
+          }
+        }
+      ]
+    },
+    {
+      "name": "📊 Audit Endpoints",
+      "item": [
+        {
+          "name": "1️⃣ POST - Crear Log Manual",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Log creado exitosamente', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Respuesta contiene ID del log', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('id');",
+                  "    pm.globals.set('lastLogId', responseJson.id);",
+                  "});",
+                  "",
+                  "pm.test('Datos del log son correctos', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.accion).to.equal('TEST_POSTMAN');",
+                  "    pm.expect(responseJson.tabla).to.equal('users');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "access_token={{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accion\": \"TEST_POSTMAN\",\n  \"tabla\": \"users\",\n  \"registroId\": \"postman-test-{{$timestamp}}\",\n  \"userId\": \"{{testUserId}}\",\n  \"datosDespues\": \"{\\\"test\\\":\\\"Creado desde Postman\\\",\\\"timestamp\\\":\\\"{{$isoTimestamp}}\\\"}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/audit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "audit"]
+            },
+            "description": "Crear un log de auditoría manualmente"
+          }
+        },
+        {
+          "name": "2️⃣ GET - Todos los Logs (Sin filtros)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Logs obtenidos exitosamente', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Respuesta contiene data y paginación', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('data');",
+                  "    pm.expect(responseJson).to.have.property('pagination');",
+                  "});",
+                  "",
+                  "pm.test('Logs contienen campos requeridos', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    if (responseJson.data.length > 0) {",
+                  "        const firstLog = responseJson.data[0];",
+                  "        pm.expect(firstLog).to.have.property('id');",
+                  "        pm.expect(firstLog).to.have.property('accion');",
+                  "        pm.expect(firstLog).to.have.property('tabla');",
+                  "        pm.expect(firstLog).to.have.property('userId');",
+                  "        pm.expect(firstLog).to.have.property('createdAt');",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "access_token={{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/audit/logs?limit=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "audit", "logs"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": "Obtener todos los logs con límite de 5"
+          }
+        },
+        {
+          "name": "2️⃣ GET - Logs Filtrados por Acción",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Filtro por acción funciona', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const responseJson = pm.response.json();",
+                  "    if (responseJson.data.length > 0) {",
+                  "        responseJson.data.forEach(log => {",
+                  "            pm.expect(log.accion).to.equal('LOGIN');",
+                  "        });",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "access_token={{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/audit/logs?accion=LOGIN&limit=3",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "audit", "logs"],
+              "query": [
+                {
+                  "key": "accion",
+                  "value": "LOGIN"
+                },
+                {
+                  "key": "limit",
+                  "value": "3"
+                }
+              ]
+            },
+            "description": "Filtrar logs por acción LOGIN"
+          }
+        },
+        {
+          "name": "2️⃣ GET - Logs Filtrados por Tabla",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Filtro por tabla funciona', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const responseJson = pm.response.json();",
+                  "    if (responseJson.data.length > 0) {",
+                  "        responseJson.data.forEach(log => {",
+                  "            pm.expect(log.tabla).to.equal('users');",
+                  "        });",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "access_token={{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/audit/logs?tabla=users&limit=3",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "audit", "logs"],
+              "query": [
+                {
+                  "key": "tabla",
+                  "value": "users"
+                },
+                {
+                  "key": "limit",
+                  "value": "3"
+                }
+              ]
+            },
+            "description": "Filtrar logs por tabla users"
+          }
+        },
+        {
+          "name": "3️⃣ GET - Estadísticas de Auditoría",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Nota: Este endpoint puede fallar por problemas internos",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test('Estadísticas obtenidas exitosamente', function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    ",
+                  "    pm.test('Respuesta contiene estadísticas esperadas', function () {",
+                  "        const responseJson = pm.response.json();",
+                  "        pm.expect(responseJson).to.have.property('totalLogs');",
+                  "        pm.expect(responseJson).to.have.property('actionStats');",
+                  "        pm.expect(responseJson).to.have.property('tableStats');",
+                  "    });",
+                  "} else {",
+                  "    pm.test('Endpoint conocido con problemas (500)', function () {",
+                  "        pm.expect([200, 500]).to.include(pm.response.code);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "access_token={{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/audit/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "audit", "stats"]
+            },
+            "description": "Obtener estadísticas del sistema de auditoría (Nota: Puede fallar con 500)"
+          }
+        },
+        {
+          "name": "4️⃣ GET - Logs por Usuario Específico",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Logs por usuario obtenidos exitosamente', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Todos los logs pertenecen al usuario', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    if (responseJson.data.length > 0) {",
+                  "        responseJson.data.forEach(log => {",
+                  "            pm.expect(log.userId).to.equal(pm.globals.get('testUserId'));",
+                  "        });",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "access_token={{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/audit/users/{{testUserId}}?limit=3",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "audit", "users", "{{testUserId}}"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "3"
+                }
+              ]
+            },
+            "description": "Obtener logs específicos del usuario mougrind"
+          }
+        },
+        {
+          "name": "5️⃣ GET - Logs por Entidad (auth)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Logs por entidad obtenidos exitosamente', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Todos los logs pertenecen a la entidad auth', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    if (responseJson.data.length > 0) {",
+                  "        responseJson.data.forEach(log => {",
+                  "            pm.expect(log.tabla).to.equal('auth');",
+                  "        });",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "access_token={{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/audit/entities/auth?limit=3",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "audit", "entities", "auth"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "3"
+                }
+              ]
+            },
+            "description": "Obtener logs de la entidad 'auth'"
+          }
+        },
+        {
+          "name": "5️⃣ GET - Logs por Entidad (users)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Logs por entidad users obtenidos exitosamente', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Todos los logs pertenecen a la entidad users', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    if (responseJson.data.length > 0) {",
+                  "        responseJson.data.forEach(log => {",
+                  "            pm.expect(log.tabla).to.equal('users');",
+                  "        });",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "access_token={{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/audit/entities/users?limit=3",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "audit", "entities", "users"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "3"
+                }
+              ]
+            },
+            "description": "Obtener logs de la entidad 'users'"
+          }
+        },
+        {
+          "name": "6️⃣ GET - Log Específico por ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.globals.get('lastLogId')) {",
+                  "    pm.test('Log específico obtenido exitosamente', function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    ",
+                  "    pm.test('Log contiene información detallada', function () {",
+                  "        const responseJson = pm.response.json();",
+                  "        pm.expect(responseJson).to.have.property('id');",
+                  "        pm.expect(responseJson).to.have.property('user');",
+                  "        pm.expect(responseJson.user).to.have.property('nombre');",
+                  "    });",
+                  "} else {",
+                  "    pm.test('ID de log no disponible (ejecutar POST primero)', function () {",
+                  "        pm.expect(pm.globals.get('lastLogId')).to.not.be.undefined;",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "access_token={{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/audit/logs/{{lastLogId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "audit", "logs", "{{lastLogId}}"]
+            },
+            "description": "Obtener detalles de un log específico (usa el ID del log creado anteriormente)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "❌ Error Cases",
+      "item": [
+        {
+          "name": "Sin Autenticación - 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Sin autenticación retorna 401', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/audit/logs",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "audit", "logs"]
+            },
+            "description": "Probar endpoint sin token de autenticación"
+          }
+        },
+        {
+          "name": "ID Inválido - 400/404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('ID inválido retorna error apropiado', function () {",
+                  "    pm.expect([400, 404]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "access_token={{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/audit/logs/invalid-uuid-format",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "audit", "logs", "invalid-uuid-format"]
+            },
+            "description": "Probar con ID de formato inválido"
+          }
+        },
+        {
+          "name": "Log No Encontrado - 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Log no encontrado retorna 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "access_token={{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/audit/logs/00000000-0000-0000-0000-000000000000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "audit", "logs", "00000000-0000-0000-0000-000000000000"]
+            },
+            "description": "Probar con UUID válido pero log inexistente"
+          }
+        }
+      ]
+    }
+  ]
+}

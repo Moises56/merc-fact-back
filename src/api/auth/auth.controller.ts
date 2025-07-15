@@ -122,6 +122,7 @@ export class AuthController {
 
   @Post('change-password')
   @UseGuards(JwtAuthGuard)
+  @AuditLog({ action: 'CHANGE_PASSWORD', table: 'users' })
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Cambiar contraseña' })

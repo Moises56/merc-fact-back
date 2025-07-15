@@ -21,16 +21,18 @@ import {
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 import { GetUser } from '../../common/decorators/get-user.decorator';
 import { Role } from '../../common/enums';
 import { User } from '@prisma/client';
 
 @ApiTags('users')
 @Controller('api/users')
-// @UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
@@ -160,5 +162,31 @@ export class UsersController {
   })
   activate(@Param('id') id: string) {
     return this.usersService.activate(id);
+  }
+
+  @Patch(':id/reset-password')
+  @Roles(Role.ADMIN)
+  @AuditLog({ action: 'RESET_PASSWORD', table: 'users' })
+  @ApiOperation({
+    summary: 'Restablecer contraseña de usuario',
+    description: 'Solo administradores pueden restablecer contraseñas de otros usuarios',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Contraseña restablecida exitosamente',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Usuario no encontrado',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Acceso denegado - Solo administradores',
+  })
+  resetPassword(
+    @Param('id') id: string,
+    @Body() resetPasswordDto: ResetPasswordDto,
+  ) {
+    return this.usersService.resetPassword(id, resetPasswordDto);
   }
 }

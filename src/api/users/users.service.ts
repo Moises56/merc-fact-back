@@ -6,6 +6,7 @@ import {
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { Role } from '../../common/enums';
 import * as bcrypt from 'bcryptjs';
 
@@ -316,6 +317,44 @@ export class UsersService {
         acc[stat.role] = stat._count?.id || 0;
         return acc;
       }, {}),
+    };
+  }
+
+  async resetPassword(id: string, resetPasswordDto: ResetPasswordDto) {
+    // Verify user exists
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
+    }
+
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(resetPasswordDto.newPassword, 12);
+
+    // Update user password
+    const updatedUser = await this.prisma.user.update({
+      where: { id },
+      data: {
+        contrasena: hashedPassword,
+        updatedAt: new Date(),
+      },
+      select: {
+        id: true,
+        correo: true,
+        username: true,
+        nombre: true,
+        apellido: true,
+        role: true,
+        isActive: true,
+        updatedAt: true,
+      },
+    });
+
+    return {
+      message: 'Contraseña restablecida exitosamente',
+      user: updatedUser,
     };
   }
 }
