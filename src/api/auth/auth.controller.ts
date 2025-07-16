@@ -31,6 +31,19 @@ import { User } from '@prisma/client';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  // 🔧 Función helper para configuración de cookies
+  private getCookieOptions(maxAge: number) {
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    return {
+      httpOnly: true,
+      secure: isProduction, // Solo HTTPS en producción
+      sameSite: isProduction ? ('none' as const) : ('lax' as const), // 'none' para cross-domain
+      domain: isProduction ? '.amdc.hn' : undefined, // Dominio compartido
+      maxAge,
+    };
+  }
+
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @AuditLog({ action: 'LOGIN', table: 'auth' })
@@ -49,19 +62,26 @@ export class AuthController {
   ) {
     const result = await this.authService.login(loginDto);
 
-    // Set HTTP-only cookies
-    response.cookie('access_token', result.access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 15 * 60 * 1000, // 15 minutes
-    });
+    // ✅ Configuración correcta para cookies cross-domain
 
-    response.cookie('refresh_token', result.refresh_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    // Set access token cookie (15 minutos)
+    response.cookie(
+      'access_token',
+      result.access_token,
+      this.getCookieOptions(15 * 60 * 1000),
+    );
+
+    // Set refresh token cookie (7 días)
+    response.cookie(
+      'refresh_token',
+      result.refresh_token,
+      this.getCookieOptions(7 * 24 * 60 * 60 * 1000),
+    );
+
+    console.log('🍪 Cookies establecidas:', {
+      isProduction: process.env.NODE_ENV === 'production',
+      domain: process.env.NODE_ENV === 'production' ? '.amdc.hn' : 'localhost',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     });
 
     return {
@@ -91,13 +111,16 @@ export class AuthController {
       return { statusCode: 401, message: 'Token de refresh no encontrado' };
     }
 
-    const result = await this.authService.refreshToken({ refreshToken });    // Update access token cookie
-    response.cookie('access_token', result.access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 15 * 60 * 1000, // 15 minutes
-    });
+    const result = await this.authService.refreshToken({ refreshToken });
+
+    // ✅ Update access token cookie con configuración correcta
+    response.cookie(
+      'access_token',
+      result.access_token,
+      this.getCookieOptions(15 * 60 * 1000),
+    );
+
+    console.log('🔄 Access token renovado via cookies');
 
     return {
       message: 'Token actualizado exitosamente',
@@ -113,9 +136,20 @@ export class AuthController {
     description: 'Sesión cerrada exitosamente',
   })
   async logout(@Res({ passthrough: true }) response: Response) {
-    // Clear cookies
-    response.clearCookie('access_token');
-    response.clearCookie('refresh_token');
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    // ✅ Clear cookies with same configuration as when set
+    const clearOptions = {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? ('none' as const) : ('lax' as const),
+      domain: isProduction ? '.amdc.hn' : undefined,
+    };
+
+    response.clearCookie('access_token', clearOptions);
+    response.clearCookie('refresh_token', clearOptions);
+
+    console.log('🚪 Cookies limpiadas en logout');
 
     return this.authService.logout();
   }

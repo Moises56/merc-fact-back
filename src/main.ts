@@ -16,7 +16,8 @@ async function bootstrap() {
     }),
   );
   // Configuración de cookies
-  app.use(cookieParser()); // Configuración de CORS
+  // app.use(cookieParser()); // Configuración de CORS
+  app.use(cookieParser(process.env.COOKIE_SECRET || 'your-secret-key'));
   // Parse comma-separated origins from FRONTEND_URL
   const allowedOrigins = process.env.FRONTEND_URL
     ? process.env.FRONTEND_URL.split(',').map((origin) => origin.trim())
