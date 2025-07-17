@@ -22,6 +22,7 @@ import {
 import { FacturasService } from './facturas.service';
 import { CreateFacturaDto } from './dto/create-factura.dto';
 import { UpdateFacturaDto } from './dto/update-factura.dto';
+import { AnularFacturaDto } from './dto/anular-factura.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -148,6 +149,48 @@ export class FacturasController {
   @ApiResponse({ status: 404, description: 'Factura no encontrada' })
   markAsPaid(@Param('id') id: string) {
     return this.facturasService.markAsPaid(id);
+  }
+
+  @Patch(':id/anular')
+  @Roles(Role.ADMIN, Role.MARKET)
+  @AuditLog({ action: 'ANULAR', table: 'facturas' })
+  @ApiOperation({ summary: 'Anular una factura con justificación' })
+  @ApiResponse({
+    status: 200,
+    description: 'Factura anulada exitosamente',
+    schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        estado: { type: 'string', example: 'ANULADA' },
+        fecha_anulacion: { type: 'string', format: 'date-time' },
+        razon_anulacion: { type: 'string' },
+        anuladaBy: {
+          type: 'object',
+          properties: {
+            nombre: { type: 'string' },
+            apellido: { type: 'string' },
+            correo: { type: 'string' },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'La factura ya está anulada o pagada',
+  })
+  @ApiResponse({ status: 404, description: 'Factura no encontrada' })
+  anular(
+    @Param('id') id: string,
+    @Body() anularFacturaDto: AnularFacturaDto,
+    @GetUser() user: User,
+  ) {
+    return this.facturasService.anular(
+      id,
+      anularFacturaDto.razon_anulacion,
+      user.id,
+    );
   }
 
   @Post('massive')

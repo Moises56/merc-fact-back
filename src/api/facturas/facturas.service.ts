@@ -331,6 +331,88 @@ export class FacturasService {
     return updatedFactura;
   }
 
+  async anular(id: string, razon_anulacion: string, userId: string) {
+    // Verificar que la factura existe
+    const factura = await this.prisma.factura.findUnique({
+      where: { id },
+      include: {
+        local: {
+          include: {
+            mercado: true,
+          },
+        },
+        createdBy: {
+          select: {
+            id: true,
+            nombre: true,
+            apellido: true,
+            correo: true,
+          },
+        },
+        anuladaBy: {
+          select: {
+            id: true,
+            nombre: true,
+            apellido: true,
+            correo: true,
+          },
+        },
+      },
+    });
+
+    if (!factura) {
+      throw new NotFoundException('Factura no encontrada');
+    }
+
+    // Validar que la factura no esté ya anulada
+    if (factura.estado === 'ANULADA') {
+      throw new BadRequestException('La factura ya está anulada');
+    }
+
+    // Validar que no esté pagada (según reglas de negocio)
+    if (factura.estado === 'PAGADA') {
+      throw new BadRequestException(
+        'No se puede anular una factura que ya está pagada. Contacte al administrador.',
+      );
+    }
+
+    // Anular la factura
+    const facturaAnulada = await this.prisma.factura.update({
+      where: { id },
+      data: {
+        estado: EstadoFactura.ANULADA,
+        fecha_anulacion: new Date(),
+        razon_anulacion,
+        anulada_por_user_id: userId,
+      },
+      include: {
+        local: {
+          include: {
+            mercado: true,
+          },
+        },
+        createdBy: {
+          select: {
+            id: true,
+            nombre: true,
+            apellido: true,
+            correo: true,
+          },
+        },
+        anuladaBy: {
+          select: {
+            id: true,
+            nombre: true,
+            apellido: true,
+            correo: true,
+          },
+        },
+      },
+    });
+
+    return facturaAnulada;
+  }
+
   async getFacturaStats() {
     const [
       totalFacturas,

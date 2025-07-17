@@ -33,6 +33,7 @@ model User {
   
   // Relaciones
   createdFacturas Factura[] @relation("FacturaCreador")
+  facturasAnuladas Factura[] @relation("FacturaAnulada")
   auditLogs       AuditLog[]
   
   createdAt       DateTime @default(now())
@@ -99,6 +100,11 @@ model Factura {
   fecha_pago        DateTime?
   observaciones     String?
   
+  // Campos para anulación
+  fecha_anulacion     DateTime?
+  razon_anulacion     String?
+  anulada_por_user_id String?
+  
   // Información del local (desnormalizada para histórico)
   mercado_nombre    String
   local_nombre      String?
@@ -111,6 +117,7 @@ model Factura {
   local             Local @relation(fields: [localId], references: [id])
   createdByUserId   String
   createdBy         User  @relation("FacturaCreador", fields: [createdByUserId], references: [id])
+  anuladaBy         User? @relation("FacturaAnulada", fields: [anulada_por_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
