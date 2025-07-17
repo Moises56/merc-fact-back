@@ -26,6 +26,7 @@ import { LocalStatsResponseDto } from './dto/local-stats-response.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 import { Role, EstadoLocal, TipoLocal } from '../../common/enums';
 
 @ApiTags('locales')
@@ -37,6 +38,7 @@ export class LocalesController {
 
   @Post()
   @Roles(Role.ADMIN, Role.MARKET)
+  @AuditLog({ action: 'CREATE', table: 'locales' })
   @ApiOperation({ summary: 'Crear un nuevo local comercial' })
   @ApiResponse({ status: 201, description: 'Local creado exitosamente' })
   @ApiResponse({ status: 400, description: 'Datos inválidos' })
@@ -50,6 +52,7 @@ export class LocalesController {
 
   @Get()
   @Roles(Role.ADMIN, Role.MARKET, Role.USER)
+  @AuditLog({ action: 'LIST', table: 'locales' })
   @ApiOperation({
     summary: 'Obtener lista de locales con paginación y filtros',
   })
@@ -101,6 +104,7 @@ export class LocalesController {
 
   @Get('stats')
   @Roles(Role.ADMIN, Role.MARKET)
+  @AuditLog({ action: 'VIEW_STATS', table: 'locales' })
   @ApiOperation({ summary: 'Obtener estadísticas de locales' })
   @ApiResponse({
     status: 200,
@@ -112,6 +116,7 @@ export class LocalesController {
 
   @Get(':id/stats')
   @Roles(Role.ADMIN, Role.MARKET, Role.USER)
+  @AuditLog({ action: 'VIEW_LOCAL_STATS', table: 'locales' })
   @ApiOperation({ summary: 'Obtener estadísticas de un local específico' })
   @ApiResponse({
     status: 200,
@@ -125,6 +130,7 @@ export class LocalesController {
 
   @Get(':id')
   @Roles(Role.ADMIN, Role.MARKET, Role.USER)
+  @AuditLog({ action: 'VIEW', table: 'locales' })
   @ApiOperation({ summary: 'Obtener un local por ID' })
   @ApiResponse({ status: 200, description: 'Local encontrado' })
   @ApiResponse({ status: 404, description: 'Local no encontrado' })
@@ -134,6 +140,7 @@ export class LocalesController {
 
   @Get(':id/facturas')
   @Roles(Role.ADMIN, Role.MARKET, Role.USER)
+  @AuditLog({ action: 'VIEW_LOCAL_FACTURAS', table: 'locales' })
   @ApiOperation({ summary: 'Obtener facturas de un local específico' })
   @ApiQuery({
     name: 'page',
@@ -162,6 +169,7 @@ export class LocalesController {
 
   @Patch(':id')
   @Roles(Role.ADMIN, Role.MARKET)
+  @AuditLog({ action: 'UPDATE', table: 'locales' })
   @ApiOperation({ summary: 'Actualizar un local' })
   @ApiResponse({ status: 200, description: 'Local actualizado exitosamente' })
   @ApiResponse({ status: 404, description: 'Local no encontrado' })
@@ -175,6 +183,7 @@ export class LocalesController {
 
   @Patch(':id/activate')
   @Roles(Role.ADMIN, Role.MARKET)
+  @AuditLog({ action: 'ACTIVATE', table: 'locales' })
   @ApiOperation({ summary: 'Activar un local' })
   @ApiResponse({ status: 200, description: 'Local activado exitosamente' })
   @ApiResponse({ status: 404, description: 'Local no encontrado' })
@@ -184,6 +193,7 @@ export class LocalesController {
 
   @Patch(':id/deactivate')
   @Roles(Role.ADMIN, Role.MARKET)
+  @AuditLog({ action: 'DEACTIVATE', table: 'locales' })
   @ApiOperation({ summary: 'Desactivar un local' })
   @ApiResponse({ status: 200, description: 'Local desactivado exitosamente' })
   @ApiResponse({ status: 404, description: 'Local no encontrado' })
@@ -193,6 +203,7 @@ export class LocalesController {
 
   @Patch(':id/suspend')
   @Roles(Role.ADMIN, Role.MARKET)
+  @AuditLog({ action: 'SUSPEND', table: 'locales' })
   @ApiOperation({ summary: 'Suspender un local' })
   @ApiResponse({ status: 200, description: 'Local suspendido exitosamente' })
   @ApiResponse({ status: 404, description: 'Local no encontrado' })
@@ -202,6 +213,7 @@ export class LocalesController {
 
   @Delete(':id')
   @Roles(Role.ADMIN)
+  @AuditLog({ action: 'DELETE', table: 'locales' })
   @ApiOperation({ summary: 'Eliminar un local' })
   @ApiResponse({ status: 200, description: 'Local eliminado exitosamente' })
   @ApiResponse({ status: 404, description: 'Local no encontrado' })

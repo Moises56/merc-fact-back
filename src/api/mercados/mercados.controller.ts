@@ -56,6 +56,7 @@ export class MercadosController {
 
   @Get()
   @Roles(Role.ADMIN, Role.MARKET, Role.USER)
+  @AuditLog({ action: 'LIST', table: 'mercados' })
   @ApiOperation({ summary: 'Obtener lista de mercados' })
   @ApiQuery({
     name: 'page',
@@ -89,6 +90,7 @@ export class MercadosController {
 
   @Get('stats')
   @Roles(Role.ADMIN, Role.MARKET)
+  @AuditLog({ action: 'VIEW_STATS', table: 'mercados' })
   @ApiOperation({ summary: 'Obtener estadísticas de mercados' })
   @ApiResponse({
     status: 200,
@@ -100,6 +102,7 @@ export class MercadosController {
 
   @Get(':id')
   @Roles(Role.ADMIN, Role.MARKET, Role.USER)
+  @AuditLog({ action: 'VIEW', table: 'mercados' })
   @ApiOperation({ summary: 'Obtener mercado por ID' })
   @ApiResponse({
     status: 200,
@@ -169,6 +172,7 @@ export class MercadosController {
 
   @Get(':id/locales')
   @Roles(Role.ADMIN, Role.MARKET, Role.USER)
+  @AuditLog({ action: 'VIEW_MERCADO_LOCALES', table: 'mercados' })
   @ApiOperation({ summary: 'Obtener locales de un mercado' })
   @ApiQuery({
     name: 'estado',
@@ -200,6 +204,7 @@ export class MercadosController {
 
   @Get(':id/stats')
   @Roles(Role.ADMIN, Role.MARKET, Role.USER)
+  @AuditLog({ action: 'VIEW_MERCADO_STATS', table: 'mercados' })
   @ApiOperation({ summary: 'Obtener estadísticas específicas de un mercado' })
   @ApiResponse({
     status: 200,

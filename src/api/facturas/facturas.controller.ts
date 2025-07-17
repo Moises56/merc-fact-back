@@ -55,6 +55,7 @@ export class FacturasController {
 
   @Get()
   @Roles(Role.ADMIN, Role.MARKET, Role.USER)
+  @AuditLog({ action: 'LIST', table: 'facturas' })
   @ApiOperation({ summary: 'Obtener lista de facturas con paginación' })
   @ApiQuery({
     name: 'page',
@@ -109,6 +110,7 @@ export class FacturasController {
 
   @Get('stats')
   @Roles(Role.ADMIN, Role.MARKET)
+  @AuditLog({ action: 'VIEW_STATS', table: 'facturas' })
   @ApiOperation({ summary: 'Obtener estadísticas de facturas' })
   @ApiResponse({
     status: 200,
@@ -120,6 +122,7 @@ export class FacturasController {
 
   @Get(':id')
   @Roles(Role.ADMIN, Role.MARKET, Role.USER)
+  @AuditLog({ action: 'VIEW', table: 'facturas' })
   @ApiOperation({ summary: 'Obtener una factura por ID' })
   @ApiResponse({ status: 200, description: 'Factura encontrada' })
   @ApiResponse({ status: 404, description: 'Factura no encontrada' })
@@ -129,6 +132,7 @@ export class FacturasController {
 
   @Patch(':id')
   @Roles(Role.ADMIN, Role.MARKET)
+  @AuditLog({ action: 'UPDATE', table: 'facturas' })
   @ApiOperation({ summary: 'Actualizar una factura' })
   @ApiResponse({ status: 200, description: 'Factura actualizada exitosamente' })
   @ApiResponse({ status: 404, description: 'Factura no encontrada' })
@@ -173,6 +177,7 @@ export class FacturasController {
 
   @Delete(':id')
   @Roles(Role.ADMIN)
+  @AuditLog({ action: 'DELETE', table: 'facturas' })
   @ApiOperation({ summary: 'Eliminar una factura' })
   @ApiResponse({ status: 200, description: 'Factura eliminada exitosamente' })
   @ApiResponse({ status: 404, description: 'Factura no encontrada' })

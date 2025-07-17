@@ -39,6 +39,7 @@ export class UsersController {
 
   @Post()
   @Roles(Role.ADMIN)
+  @AuditLog({ action: 'CREATE', table: 'users' })
   @ApiOperation({ summary: 'Crear nuevo usuario' })
   @ApiResponse({
     status: 201,
@@ -58,6 +59,7 @@ export class UsersController {
 
   @Get()
   @Roles(Role.ADMIN, Role.MARKET)
+  @AuditLog({ action: 'LIST', table: 'users' })
   @ApiOperation({ summary: 'Obtener lista de usuarios' })
   @ApiQuery({
     name: 'page',
@@ -91,6 +93,7 @@ export class UsersController {
 
   @Get('stats')
   @Roles(Role.ADMIN)
+  @AuditLog({ action: 'VIEW_STATS', table: 'users' })
   @ApiOperation({ summary: 'Obtener estadísticas de usuarios' })
   @ApiResponse({
     status: 200,
@@ -102,6 +105,7 @@ export class UsersController {
 
   @Get(':id')
   @Roles(Role.ADMIN, Role.MARKET)
+  @AuditLog({ action: 'VIEW', table: 'users' })
   @ApiOperation({ summary: 'Obtener usuario por ID' })
   @ApiResponse({
     status: 200,
@@ -117,6 +121,7 @@ export class UsersController {
 
   @Patch(':id')
   @Roles(Role.ADMIN)
+  @AuditLog({ action: 'UPDATE', table: 'users' })
   @ApiOperation({ summary: 'Actualizar usuario' })
   @ApiResponse({
     status: 200,
@@ -136,6 +141,7 @@ export class UsersController {
 
   @Delete(':id')
   @Roles(Role.ADMIN)
+  @AuditLog({ action: 'DELETE', table: 'users' })
   @ApiOperation({ summary: 'Desactivar usuario' })
   @ApiResponse({
     status: 200,
@@ -151,6 +157,7 @@ export class UsersController {
 
   @Patch(':id/activate')
   @Roles(Role.ADMIN)
+  @AuditLog({ action: 'ACTIVATE', table: 'users' })
   @ApiOperation({ summary: 'Activar usuario' })
   @ApiResponse({
     status: 200,
