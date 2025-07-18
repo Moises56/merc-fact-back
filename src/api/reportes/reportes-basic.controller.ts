@@ -38,7 +38,7 @@ export class GenerarReporteBasicoDto {
 }
 
 @ApiTags('Reportes - Version Básica')
-@Controller('reportes')
+@Controller('api/reportes')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class ReportesBasicController {

@@ -8,7 +8,7 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
 @ApiTags('Reportes - Demo Público')
-@Controller('reportes-demo')
+@Controller('api/reportes-demo')
 export class ReportesDemoController {
   constructor(private readonly prisma: PrismaService) {}
 
