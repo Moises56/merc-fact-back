@@ -29,6 +29,7 @@
     "@nestjs/swagger": "^11.2.0",
     "@nestjs/throttler": "^6.4.0",
     "@prisma/client": "^6.9.0",
+    "@types/pdfkit": "^0.17.0",
     "axios": "^1.10.0",
     "axios-cookiejar-support": "^6.0.3",
     "bcryptjs": "^3.0.2",
@@ -37,10 +38,12 @@
     "cookie-parser": "^1.4.7",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
+    "pdfkit": "^0.17.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "swagger-ui-express": "^5.0.1",
-    "tough-cookie": "^5.1.2"
+    "tough-cookie": "^5.1.2",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

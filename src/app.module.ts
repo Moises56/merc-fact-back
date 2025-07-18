@@ -12,6 +12,7 @@ import { LocalesModule } from './api/locales/locales.module';
 import { FacturasModule } from './api/facturas/facturas.module';
 import { AuditModule } from './api/audit/audit.module';
 import { DashboardModule } from './api/dashboard/dashboard.module';
+import { ReportesModule } from './api/reportes/reportes.module';
 import { SeedModule } from './seed/seed.module';
 import { AuditInterceptor } from './common/audit/audit.interceptor';
 
@@ -35,6 +36,7 @@ import { AuditInterceptor } from './common/audit/audit.interceptor';
     FacturasModule,
     AuditModule,
     DashboardModule,
+    ReportesModule,
     SeedModule,
   ],
   controllers: [AppController],
