@@ -14,7 +14,15 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiProperty,
 } from '@nestjs/swagger';
+import {
+  IsString,
+  IsEnum,
+  IsOptional,
+  IsArray,
+  IsDateString,
+} from 'class-validator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -26,14 +34,105 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 export const IS_PUBLIC_KEY = 'isPublic';
 export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
 
-// DTOs básicos para comenzar
+// Enums para validación
+enum TipoReporte {
+  FINANCIERO = 'FINANCIERO',
+  OPERACIONAL = 'OPERACIONAL',
+  MERCADO = 'MERCADO',
+  LOCAL = 'LOCAL',
+}
+
+enum PeriodoReporte {
+  MENSUAL = 'MENSUAL',
+  TRIMESTRAL = 'TRIMESTRAL',
+  ANUAL = 'ANUAL',
+}
+
+enum FormatoReporte {
+  JSON = 'JSON',
+  PDF = 'PDF',
+  EXCEL = 'EXCEL',
+  CSV = 'CSV',
+}
+
+// DTO con validaciones
 export class GenerarReporteBasicoDto {
-  tipo: 'FINANCIERO' | 'OPERACIONAL' | 'MERCADO' | 'LOCAL';
-  periodo: 'MENSUAL' | 'TRIMESTRAL' | 'ANUAL';
-  formato?: 'JSON' | 'PDF' | 'EXCEL' | 'CSV';
+  @ApiProperty({
+    description: 'Tipo de reporte a generar',
+    enum: TipoReporte,
+    example: 'FINANCIERO',
+  })
+  @IsEnum(TipoReporte, {
+    message: 'Tipo debe ser: FINANCIERO, OPERACIONAL, MERCADO o LOCAL',
+  })
+  tipo: TipoReporte;
+
+  @ApiProperty({
+    description: 'Período del reporte',
+    enum: PeriodoReporte,
+    example: 'MENSUAL',
+  })
+  @IsEnum(PeriodoReporte, {
+    message: 'Período debe ser: MENSUAL, TRIMESTRAL o ANUAL',
+  })
+  periodo: PeriodoReporte;
+
+  @ApiProperty({
+    description: 'Formato de salida del reporte',
+    enum: FormatoReporte,
+    example: 'JSON',
+    required: false,
+  })
+  @IsOptional()
+  @IsEnum(FormatoReporte, {
+    message: 'Formato debe ser: JSON, PDF, EXCEL o CSV',
+  })
+  formato?: FormatoReporte;
+
+  @ApiProperty({
+    description: 'Fecha de inicio para reporte personalizado (YYYY-MM-DD)',
+    example: '2024-01-01',
+    required: false,
+  })
+  @IsOptional()
+  @IsDateString(
+    {},
+    { message: 'Fecha de inicio debe ser una fecha válida (YYYY-MM-DD)' },
+  )
   fechaInicio?: string;
+
+  @ApiProperty({
+    description: 'Fecha de fin para reporte personalizado (YYYY-MM-DD)',
+    example: '2024-12-31',
+    required: false,
+  })
+  @IsOptional()
+  @IsDateString(
+    {},
+    { message: 'Fecha de fin debe ser una fecha válida (YYYY-MM-DD)' },
+  )
   fechaFin?: string;
+
+  @ApiProperty({
+    description: 'IDs de mercados a incluir en el reporte',
+    type: [String],
+    example: ['mercado-1', 'mercado-2'],
+    required: false,
+  })
+  @IsOptional()
+  @IsArray({ message: 'Mercados debe ser un array' })
+  @IsString({ each: true, message: 'Cada mercado debe ser un string' })
   mercados?: string[];
+
+  @ApiProperty({
+    description: 'IDs de locales a incluir en el reporte',
+    type: [String],
+    example: ['local-1', 'local-2'],
+    required: false,
+  })
+  @IsOptional()
+  @IsArray({ message: 'Locales debe ser un array' })
+  @IsString({ each: true, message: 'Cada local debe ser un string' })
   locales?: string[];
 }
 
@@ -75,7 +174,7 @@ export class ReportesBasicController {
       }
 
       const whereCondition: any = {
-        fecha_emision: {
+        createdAt: {
           gte: fechaInicio,
           lte: fechaFin,
         },
@@ -96,16 +195,16 @@ export class ReportesBasicController {
       let reporteData: any = {};
 
       switch (dto.tipo) {
-        case 'FINANCIERO':
+        case TipoReporte.FINANCIERO:
           reporteData = await this.generarReporteFinanciero(whereCondition);
           break;
-        case 'OPERACIONAL':
+        case TipoReporte.OPERACIONAL:
           reporteData = await this.generarReporteOperacional(whereCondition);
           break;
-        case 'MERCADO':
+        case TipoReporte.MERCADO:
           reporteData = await this.generarReportePorMercado(whereCondition);
           break;
-        case 'LOCAL':
+        case TipoReporte.LOCAL:
           reporteData = await this.generarReportePorLocal(whereCondition);
           break;
         default:
@@ -432,7 +531,7 @@ export class ReportesBasicController {
     const facturasHoy = await this.prisma.factura.count({
       where: {
         ...whereCondition,
-        fecha_emision: {
+        createdAt: {
           gte: new Date(new Date().setHours(0, 0, 0, 0)),
           lte: new Date(new Date().setHours(23, 59, 59, 999)),
         },
