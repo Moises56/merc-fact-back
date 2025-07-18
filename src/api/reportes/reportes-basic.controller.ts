@@ -183,12 +183,12 @@ export class ReportesBasicController {
       // Aplicar filtros adicionales
       if (dto.mercados?.length) {
         whereCondition.local = {
-          mercado_id: { in: dto.mercados },
+          mercadoId: { in: dto.mercados },
         };
       }
 
       if (dto.locales?.length) {
-        whereCondition.local_id = { in: dto.locales };
+        whereCondition.localId = { in: dto.locales };
       }
 
       // Obtener datos básicos según el tipo

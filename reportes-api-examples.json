@@ -1,0 +1,322 @@
+{
+  "reportes_api": {
+    "base_url": "http://localhost:3000/api/reportes/generar",
+    "authentication": {
+      "type": "JWT_Cookie",
+      "cookie_name": "access_token",
+      "required_roles": ["ADMIN", "USER"]
+    },
+    "tipos_reporte": {
+      "FINANCIERO": {
+        "descripcion": "Análisis financiero completo con totales, promedios y agrupación por estado/mercado",
+        "casos_uso": ["Dashboard financiero", "Análisis de ingresos", "Reportes contables"]
+      },
+      "OPERACIONAL": {
+        "descripcion": "Métricas operacionales y de rendimiento del sistema",
+        "casos_uso": ["Dashboard operativo", "KPIs", "Monitoreo de actividad"]
+      },
+      "MERCADO": {
+        "descripcion": "Análisis detallado agrupado por mercado",
+        "casos_uso": ["Comparación entre mercados", "Performance por ubicación"]
+      },
+      "LOCAL": {
+        "descripcion": "Análisis detallado a nivel de local individual",
+        "casos_uso": ["Seguimiento de locales específicos", "Análisis granular"]
+      }
+    },
+    "periodos_disponibles": [
+      "MENSUAL",
+      "ANUAL"
+    ],
+    "formatos_salida": [
+      "JSON",
+      "PDF",
+      "EXCEL"
+    ],
+    "ejemplos_request": {
+      "financiero_basico": {
+        "descripcion": "Reporte financiero básico del mes actual",
+        "curl": "curl -X POST \"http://localhost:3000/api/reportes/generar\" -H \"Content-Type: application/json\" -b cookies.txt -d '{\"tipo\":\"FINANCIERO\",\"periodo\":\"MENSUAL\"}'",
+        "body": {
+          "tipo": "FINANCIERO",
+          "periodo": "MENSUAL"
+        },
+        "response_esperado": {
+          "success": true,
+          "data": {
+            "resumen": {
+              "total_recaudado": 6480,
+              "total_facturas": 27,
+              "promedio_factura": 240
+            },
+            "por_estado": {
+              "PAGADA": {
+                "cantidad": 7,
+                "monto": 1395
+              },
+              "PENDIENTE": {
+                "cantidad": 20,
+                "monto": 5085
+              }
+            },
+            "por_mercado": [
+              {
+                "mercado_id": "4604695e-b177-44b8-93c3-3fa5f90a8263",
+                "nombre_mercado": "Mercado Zonal Belén",
+                "total_recaudado": 750,
+                "total_facturas": 3,
+                "facturas_pagadas": 0,
+                "total_locales": 1277
+              }
+            ]
+          }
+        }
+      },
+      "operacional_anual": {
+        "descripcion": "Reporte operacional anual",
+        "curl": "curl -X POST \"http://localhost:3000/api/reportes/generar\" -H \"Content-Type: application/json\" -b cookies.txt -d '{\"tipo\":\"OPERACIONAL\",\"periodo\":\"ANUAL\"}'",
+        "body": {
+          "tipo": "OPERACIONAL",
+          "periodo": "ANUAL"
+        },
+        "response_esperado": {
+          "success": true,
+          "data": {
+            "estadisticas": {
+              "total_facturas": 27,
+              "mercados_activos": 5,
+              "locales_activos": 13
+            },
+            "rendimiento": {
+              "facturas_hoy": 0,
+              "eficiencia": "BAJA"
+            }
+          }
+        }
+      },
+      "mercado_filtrado": {
+        "descripcion": "Reporte por mercados específicos",
+        "curl": "curl -X POST \"http://localhost:3000/api/reportes/generar\" -H \"Content-Type: application/json\" -b cookies.txt -d '{\"tipo\":\"MERCADO\",\"periodo\":\"MENSUAL\",\"mercados\":[\"4604695e-b177-44b8-93c3-3fa5f90a8263\"]}'",
+        "body": {
+          "tipo": "MERCADO",
+          "periodo": "MENSUAL",
+          "mercados": [
+            "4604695e-b177-44b8-93c3-3fa5f90a8263",
+            "866595cc-c500-4eec-a625-92dee38bc244"
+          ]
+        },
+        "response_esperado": {
+          "success": true,
+          "data": {
+            "mercados": [
+              {
+                "mercado_id": "4604695e-b177-44b8-93c3-3fa5f90a8263",
+                "nombre_mercado": "Mercado Zonal Belén",
+                "total_recaudado": 750,
+                "total_facturas": 3,
+                "facturas_pagadas": 0,
+                "total_locales": 1277
+              }
+            ]
+          }
+        }
+      },
+      "local_detallado": {
+        "descripcion": "Reporte detallado por locales",
+        "curl": "curl -X POST \"http://localhost:3000/api/reportes/generar\" -H \"Content-Type: application/json\" -b cookies.txt -d '{\"tipo\":\"LOCAL\",\"periodo\":\"MENSUAL\"}'",
+        "body": {
+          "tipo": "LOCAL",
+          "periodo": "MENSUAL"
+        },
+        "response_esperado": {
+          "success": true,
+          "data": {
+            "locales": [
+              {
+                "id": "00069D3C-B1A2-45A9-8EB0-CBAE695775DA",
+                "numero_local": "266",
+                "nombre_local": "NO DISPONIBLE",
+                "mercado": "Mercado Zonal Belén",
+                "total_facturas": 2,
+                "total_recaudado": 600,
+                "facturas_pagadas": 0
+              }
+            ]
+          }
+        }
+      },
+      "con_fechas_personalizadas": {
+        "descripcion": "Reporte con rango de fechas personalizado",
+        "body": {
+          "tipo": "FINANCIERO",
+          "periodo": "MENSUAL",
+          "fechaInicio": "2025-06-01T00:00:00.000Z",
+          "fechaFin": "2025-06-30T23:59:59.000Z"
+        }
+      },
+      "filtros_combinados": {
+        "descripcion": "Reporte con múltiples filtros",
+        "body": {
+          "tipo": "OPERACIONAL",
+          "periodo": "MENSUAL",
+          "mercados": [
+            "4604695e-b177-44b8-93c3-3fa5f90a8263"
+          ],
+          "locales": [
+            "00069D3C-B1A2-45A9-8EB0-CBAE695775DA"
+          ],
+          "formato": "JSON"
+        }
+      }
+    },
+    "ejemplos_response": {
+      "metadata_comun": {
+        "tipo": "FINANCIERO",
+        "periodo": {
+          "inicio": "2025-07-01T06:00:00.000Z",
+          "fin": "2025-07-31T06:00:00.000Z"
+        },
+        "formato": "JSON",
+        "tiempo_procesamiento": "125ms",
+        "timestamp": "2025-07-18T21:06:18.089Z",
+        "usuario": "mougrind"
+      },
+      "filtros_aplicados_ejemplo": {
+        "mercados": [
+          "4604695e-b177-44b8-93c3-3fa5f90a8263"
+        ],
+        "locales": [
+          "00069D3C-B1A2-45A9-8EB0-CBAE695775DA"
+        ]
+      }
+    },
+    "errores_comunes": {
+      "validacion_tipo": {
+        "status": 400,
+        "response": {
+          "message": [
+            "Tipo debe ser: FINANCIERO, OPERACIONAL, MERCADO o LOCAL"
+          ],
+          "error": "Bad Request",
+          "statusCode": 400
+        }
+      },
+      "validacion_periodo": {
+        "status": 400,
+        "response": {
+          "message": [
+            "Periodo debe ser: MENSUAL o ANUAL"
+          ],
+          "error": "Bad Request",
+          "statusCode": 400
+        }
+      },
+      "campos_no_permitidos": {
+        "status": 400,
+        "response": {
+          "message": [
+            "property ano should not exist",
+            "property mes should not exist"
+          ],
+          "error": "Bad Request",
+          "statusCode": 400
+        }
+      },
+      "no_autenticado": {
+        "status": 401,
+        "response": {
+          "message": "Unauthorized",
+          "statusCode": 401
+        }
+      },
+      "sin_permisos": {
+        "status": 403,
+        "response": {
+          "message": "Forbidden resource",
+          "error": "Forbidden",
+          "statusCode": 403
+        }
+      },
+      "error_servidor": {
+        "status": 500,
+        "response": {
+          "success": false,
+          "error": "Error interno del servidor",
+          "timestamp": "2025-07-18T21:06:18.089Z"
+        }
+      }
+    },
+    "mercados_disponibles": [
+      {
+        "id": "4604695e-b177-44b8-93c3-3fa5f90a8263",
+        "nombre": "Mercado Zonal Belén"
+      },
+      {
+        "id": "866595cc-c500-4eec-a625-92dee38bc244",
+        "nombre": "Mercado Jacaleapa"
+      },
+      {
+        "id": "a2564f93-d208-4d63-a394-2d0cf89bd23b",
+        "nombre": "Mercado San Miguel"
+      },
+      {
+        "id": "b52495e3-ff73-43a1-b0aa-f68bf82a0c3c",
+        "nombre": "Mercado de los Dolores"
+      },
+      {
+        "id": "b9a05043-c4b4-4472-b8ec-b53095730ed6",
+        "nombre": "Mercado San Pablo"
+      }
+    ],
+    "campos_respuesta": {
+      "financiero": {
+        "data.resumen.total_recaudado": "Suma total de todos los montos recaudados",
+        "data.resumen.total_facturas": "Cantidad total de facturas en el período",
+        "data.resumen.promedio_factura": "Promedio de monto por factura",
+        "data.por_estado": "Agrupación de facturas por estado (PAGADA, PENDIENTE, VENCIDA, ANULADA)",
+        "data.por_mercado": "Array con totales agrupados por mercado"
+      },
+      "operacional": {
+        "data.estadisticas.total_facturas": "Total de facturas en el período",
+        "data.estadisticas.mercados_activos": "Cantidad de mercados con actividad",
+        "data.estadisticas.locales_activos": "Cantidad de locales con actividad",
+        "data.rendimiento.facturas_hoy": "Facturas creadas en el día actual",
+        "data.rendimiento.eficiencia": "Clasificación de eficiencia (ALTA/MEDIA/BAJA)"
+      },
+      "mercado": {
+        "data.mercados": "Array con información detallada de cada mercado",
+        "data.mercados[].total_recaudado": "Total recaudado en el mercado específico",
+        "data.mercados[].total_facturas": "Cantidad de facturas del mercado",
+        "data.mercados[].facturas_pagadas": "Cantidad de facturas pagadas",
+        "data.mercados[].total_locales": "Cantidad de locales en el mercado"
+      },
+      "local": {
+        "data.locales": "Array con información detallada de cada local",
+        "data.locales[].numero_local": "Número identificador del local",
+        "data.locales[].nombre_local": "Nombre comercial del local",
+        "data.locales[].mercado": "Nombre del mercado al que pertenece",
+        "data.locales[].total_facturas": "Cantidad de facturas del local",
+        "data.locales[].total_recaudado": "Total recaudado por el local",
+        "data.locales[].facturas_pagadas": "Cantidad de facturas pagadas del local"
+      }
+    },
+    "frontend_helpers": {
+      "typescript_interfaces": {
+        "archivo": "types/reportes.ts",
+        "contenido": "// Ver archivo REPORTES_API_DOCUMENTATION.md para interfaces completas"
+      },
+      "react_hook_ejemplo": {
+        "archivo": "hooks/useReportes.ts",
+        "descripcion": "Hook personalizado para manejar la generación de reportes"
+      },
+      "componentes_sugeridos": [
+        "ReporteSelector - Selector de tipo de reporte",
+        "FiltrosPeriodo - Selector de período y fechas",
+        "FiltrosMercados - Multiselect de mercados",
+        "FiltrosLocales - Multiselect de locales",
+        "ReporteViewer - Visualizador de resultados",
+        "ReporteExport - Exportación a PDF/Excel"
+      ]
+    }
+  }
+}

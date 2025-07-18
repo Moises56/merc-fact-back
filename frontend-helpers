@@ -1,0 +1,514 @@
+// =============================================================================
+// TIPOS DE DATOS PARA REPORTES - FRONTEND
+// =============================================================================
+
+// Tipos de entrada (Request)
+export type TipoReporte = 'FINANCIERO' | 'OPERACIONAL' | 'MERCADO' | 'LOCAL';
+export type PeriodoReporte = 'MENSUAL' | 'ANUAL';
+export type FormatoReporte = 'JSON' | 'PDF' | 'EXCEL';
+
+export interface GenerarReporteRequest {
+  tipo: TipoReporte;
+  periodo: PeriodoReporte;
+  fechaInicio?: string;    // ISO Date string
+  fechaFin?: string;       // ISO Date string
+  mercados?: string[];     // Array de IDs de mercados
+  locales?: string[];      // Array de IDs de locales
+  formato?: FormatoReporte;
+}
+
+// Tipos de respuesta común
+export interface MetadataResponse {
+  tipo: TipoReporte;
+  periodo: {
+    inicio: string;
+    fin: string;
+  };
+  formato: FormatoReporte;
+  tiempo_procesamiento: string;
+  timestamp: string;
+  usuario: string;
+}
+
+export interface FiltrosAplicados {
+  mercados: string[];
+  locales: string[];
+}
+
+export interface BaseReporteResponse {
+  success: boolean;
+  metadata: MetadataResponse;
+  filtros_aplicados: FiltrosAplicados;
+}
+
+// Tipos específicos por tipo de reporte
+export interface ReporteFinancieroData {
+  resumen: {
+    total_recaudado: number;
+    total_facturas: number;
+    promedio_factura: number;
+  };
+  por_estado: {
+    [estado: string]: {
+      cantidad: number;
+      monto: number;
+    };
+  };
+  por_mercado: Array<{
+    mercado_id: string;
+    nombre_mercado: string;
+    total_recaudado: number;
+    total_facturas: number;
+    facturas_pagadas: number;
+    total_locales: number;
+  }>;
+}
+
+export interface ReporteOperacionalData {
+  estadisticas: {
+    total_facturas: number;
+    mercados_activos: number;
+    locales_activos: number;
+  };
+  rendimiento: {
+    facturas_hoy: number;
+    eficiencia: 'ALTA' | 'MEDIA' | 'BAJA';
+  };
+}
+
+export interface ReporteMercadoData {
+  mercados: Array<{
+    mercado_id: string;
+    nombre_mercado: string;
+    total_recaudado: number;
+    total_facturas: number;
+    facturas_pagadas: number;
+    total_locales: number;
+  }>;
+}
+
+export interface ReporteLocalData {
+  locales: Array<{
+    id: string;
+    numero_local: string;
+    nombre_local: string;
+    mercado: string;
+    total_facturas: number;
+    total_recaudado: number;
+    facturas_pagadas: number;
+  }>;
+}
+
+// Respuestas completas
+export interface ReporteFinancieroResponse extends BaseReporteResponse {
+  data: ReporteFinancieroData;
+}
+
+export interface ReporteOperacionalResponse extends BaseReporteResponse {
+  data: ReporteOperacionalData;
+}
+
+export interface ReporteMercadoResponse extends BaseReporteResponse {
+  data: ReporteMercadoData;
+}
+
+export interface ReporteLocalResponse extends BaseReporteResponse {
+  data: ReporteLocalData;
+}
+
+export type ReporteResponse = 
+  | ReporteFinancieroResponse 
+  | ReporteOperacionalResponse 
+  | ReporteMercadoResponse 
+  | ReporteLocalResponse;
+
+// Error response
+export interface ReporteErrorResponse {
+  success: false;
+  message?: string | string[];
+  error?: string;
+  statusCode?: number;
+  timestamp?: string;
+}
+
+// =============================================================================
+// SERVICIO DE REPORTES
+// =============================================================================
+
+export class ReportesService {
+  private baseUrl: string;
+
+  constructor(baseUrl: string = '/api/reportes') {
+    this.baseUrl = baseUrl;
+  }
+
+  /**
+   * Genera un reporte según los parámetros especificados
+   */
+  async generarReporte(request: GenerarReporteRequest): Promise<ReporteResponse> {
+    try {
+      const response = await fetch(`${this.baseUrl}/generar`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Incluir cookies para JWT
+        body: JSON.stringify(request)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new ReporteError(
+          data.message || 'Error generando reporte',
+          response.status,
+          data
+        );
+      }
+
+      if (!data.success) {
+        throw new ReporteError(
+          data.error || 'Error en la respuesta del servidor',
+          response.status,
+          data
+        );
+      }
+
+      return data as ReporteResponse;
+    } catch (error) {
+      if (error instanceof ReporteError) {
+        throw error;
+      }
+      throw new ReporteError(
+        'Error de conexión al servidor',
+        0,
+        { originalError: error }
+      );
+    }
+  }
+
+  /**
+   * Obtiene la configuración disponible para reportes
+   */
+  async obtenerConfiguracion(): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/configuracion`, {
+        method: 'GET',
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      throw new ReporteError(
+        'Error obteniendo configuración',
+        0,
+        { originalError: error }
+      );
+    }
+  }
+
+  /**
+   * Test de conectividad
+   */
+  async testConexion(): Promise<boolean> {
+    try {
+      const response = await fetch(`${this.baseUrl}/test`, {
+        method: 'GET',
+        credentials: 'include'
+      });
+
+      return response.ok;
+    } catch (error) {
+      return false;
+    }
+  }
+}
+
+// =============================================================================
+// CLASE DE ERROR PERSONALIZADA
+// =============================================================================
+
+export class ReporteError extends Error {
+  constructor(
+    message: string,
+    public statusCode: number,
+    public details?: any
+  ) {
+    super(message);
+    this.name = 'ReporteError';
+  }
+}
+
+// =============================================================================
+// HOOK DE REACT PARA REPORTES
+// =============================================================================
+
+import { useState, useCallback } from 'react';
+
+export interface UseReportesResult {
+  loading: boolean;
+  error: string | null;
+  data: ReporteResponse | null;
+  generarReporte: (request: GenerarReporteRequest) => Promise<void>;
+  limpiarError: () => void;
+  limpiarDatos: () => void;
+}
+
+export function useReportes(baseUrl?: string): UseReportesResult {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<ReporteResponse | null>(null);
+
+  const service = new ReportesService(baseUrl);
+
+  const generarReporte = useCallback(async (request: GenerarReporteRequest) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const resultado = await service.generarReporte(request);
+      setData(resultado);
+    } catch (err) {
+      const errorMessage = err instanceof ReporteError 
+        ? err.message 
+        : 'Error desconocido generando reporte';
+      setError(errorMessage);
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [service]);
+
+  const limpiarError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  const limpiarDatos = useCallback(() => {
+    setData(null);
+    setError(null);
+  }, []);
+
+  return {
+    loading,
+    error,
+    data,
+    generarReporte,
+    limpiarError,
+    limpiarDatos
+  };
+}
+
+// =============================================================================
+// UTILIDADES Y HELPERS
+// =============================================================================
+
+/**
+ * Formatea un número como moneda
+ */
+export function formatearMoneda(valor: number): string {
+  return new Intl.NumberFormat('es-HN', {
+    style: 'currency',
+    currency: 'HNL'
+  }).format(valor);
+}
+
+/**
+ * Formatea una fecha para mostrar
+ */
+export function formatearFecha(fecha: string): string {
+  return new Date(fecha).toLocaleDateString('es-HN', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+}
+
+/**
+ * Obtiene el color para el estado de eficiencia
+ */
+export function obtenerColorEficiencia(eficiencia: 'ALTA' | 'MEDIA' | 'BAJA'): string {
+  switch (eficiencia) {
+    case 'ALTA': return '#10B981'; // Verde
+    case 'MEDIA': return '#F59E0B'; // Amarillo
+    case 'BAJA': return '#EF4444'; // Rojo
+    default: return '#6B7280'; // Gris
+  }
+}
+
+/**
+ * Calcula el porcentaje de facturas pagadas
+ */
+export function calcularPorcentajePagadas(pagadas: number, total: number): number {
+  if (total === 0) return 0;
+  return Math.round((pagadas / total) * 100);
+}
+
+/**
+ * Valida los parámetros de request antes de enviar
+ */
+export function validarRequestReporte(request: GenerarReporteRequest): string[] {
+  const errores: string[] = [];
+
+  if (!request.tipo) {
+    errores.push('El tipo de reporte es requerido');
+  }
+
+  if (!['FINANCIERO', 'OPERACIONAL', 'MERCADO', 'LOCAL'].includes(request.tipo)) {
+    errores.push('Tipo de reporte inválido');
+  }
+
+  if (!request.periodo) {
+    errores.push('El período es requerido');
+  }
+
+  if (!['MENSUAL', 'ANUAL'].includes(request.periodo)) {
+    errores.push('Período inválido');
+  }
+
+  if (request.fechaInicio && request.fechaFin) {
+    const inicio = new Date(request.fechaInicio);
+    const fin = new Date(request.fechaFin);
+    
+    if (inicio > fin) {
+      errores.push('La fecha de inicio debe ser anterior a la fecha de fin');
+    }
+  }
+
+  return errores;
+}
+
+// =============================================================================
+// CONSTANTES Y CONFIGURACIÓN
+// =============================================================================
+
+export const TIPOS_REPORTE: Array<{value: TipoReporte, label: string, descripcion: string}> = [
+  {
+    value: 'FINANCIERO',
+    label: 'Financiero',
+    descripcion: 'Análisis financiero completo con totales y promedios'
+  },
+  {
+    value: 'OPERACIONAL',
+    label: 'Operacional',
+    descripcion: 'Métricas operacionales y de rendimiento'
+  },
+  {
+    value: 'MERCADO',
+    label: 'Por Mercado',
+    descripcion: 'Análisis agrupado por mercado'
+  },
+  {
+    value: 'LOCAL',
+    label: 'Por Local',
+    descripcion: 'Análisis detallado por local'
+  }
+];
+
+export const PERIODOS_REPORTE: Array<{value: PeriodoReporte, label: string}> = [
+  { value: 'MENSUAL', label: 'Mensual' },
+  { value: 'ANUAL', label: 'Anual' }
+];
+
+export const FORMATOS_SALIDA: Array<{value: FormatoReporte, label: string}> = [
+  { value: 'JSON', label: 'Ver en pantalla' },
+  { value: 'PDF', label: 'Descargar PDF' },
+  { value: 'EXCEL', label: 'Descargar Excel' }
+];
+
+// =============================================================================
+// EJEMPLO DE USO COMPLETO
+// =============================================================================
+
+/*
+// En un componente React:
+
+import React, { useState } from 'react';
+import { 
+  useReportes, 
+  GenerarReporteRequest, 
+  TIPOS_REPORTE, 
+  PERIODOS_REPORTE,
+  formatearMoneda,
+  formatearFecha
+} from './reportes-frontend-helpers';
+
+export function ComponenteReportes() {
+  const { loading, error, data, generarReporte, limpiarError } = useReportes();
+  const [filtros, setFiltros] = useState<GenerarReporteRequest>({
+    tipo: 'FINANCIERO',
+    periodo: 'MENSUAL'
+  });
+
+  const handleGenerarReporte = async () => {
+    await generarReporte(filtros);
+  };
+
+  const handleTipoChange = (tipo: string) => {
+    setFiltros(prev => ({ ...prev, tipo: tipo as any }));
+  };
+
+  return (
+    <div>
+      <h2>Generador de Reportes</h2>
+      
+      <select 
+        value={filtros.tipo} 
+        onChange={(e) => handleTipoChange(e.target.value)}
+      >
+        {TIPOS_REPORTE.map(tipo => (
+          <option key={tipo.value} value={tipo.value}>
+            {tipo.label}
+          </option>
+        ))}
+      </select>
+
+      <select 
+        value={filtros.periodo} 
+        onChange={(e) => setFiltros(prev => ({ 
+          ...prev, 
+          periodo: e.target.value as any 
+        }))}
+      >
+        {PERIODOS_REPORTE.map(periodo => (
+          <option key={periodo.value} value={periodo.value}>
+            {periodo.label}
+          </option>
+        ))}
+      </select>
+
+      <button onClick={handleGenerarReporte} disabled={loading}>
+        {loading ? 'Generando...' : 'Generar Reporte'}
+      </button>
+
+      {error && (
+        <div style={{color: 'red'}}>
+          Error: {error}
+          <button onClick={limpiarError}>×</button>
+        </div>
+      )}
+
+      {data && data.success && (
+        <div>
+          <h3>Resultados del Reporte {data.metadata.tipo}</h3>
+          <p>Generado: {formatearFecha(data.metadata.timestamp)}</p>
+          <p>Tiempo: {data.metadata.tiempo_procesamiento}</p>
+          
+          {data.metadata.tipo === 'FINANCIERO' && (
+            <div>
+              <h4>Resumen Financiero</h4>
+              <p>Total Recaudado: {formatearMoneda((data as any).data.resumen.total_recaudado)}</p>
+              <p>Total Facturas: {(data as any).data.resumen.total_facturas}</p>
+              <p>Promedio por Factura: {formatearMoneda((data as any).data.resumen.promedio_factura)}</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+*/
