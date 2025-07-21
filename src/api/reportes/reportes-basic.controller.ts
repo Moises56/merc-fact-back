@@ -49,10 +49,10 @@ enum PeriodoReporte {
 }
 
 enum FormatoReporte {
-  JSON = 'JSON',
-  PDF = 'PDF',
-  EXCEL = 'EXCEL',
-  CSV = 'CSV',
+  JSON = 'json',
+  PDF = 'pdf',
+  EXCEL = 'xlsx',
+  CSV = 'csv',
 }
 
 // DTO con validaciones
@@ -147,9 +147,9 @@ export class ReportesBasicController {
   @HttpCode(HttpStatus.OK)
   @Roles(Role.ADMIN, Role.MARKET)
   @AuditLog({ action: 'GENERAR_REPORTE_BASICO', table: 'reportes' })
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Generar reporte básico para Ionic',
-    description: 'Versión simplificada funcionando para integración inmediata'
+    description: 'Versión simplificada funcionando para integración inmediata',
   })
   @ApiResponse({ status: 200, description: 'Reporte generado exitosamente' })
   async generarReporte(
@@ -232,7 +232,6 @@ export class ReportesBasicController {
           locales: dto.locales || [],
         },
       };
-
     } catch (error) {
       console.error('Error generando reporte:', error);
       return {
@@ -245,9 +244,9 @@ export class ReportesBasicController {
 
   @Get('configuracion')
   @Roles(Role.ADMIN, Role.MARKET, Role.USER)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Obtener configuración para la app Ionic',
-    description: 'Datos necesarios para construir la UI de reportes'
+    description: 'Datos necesarios para construir la UI de reportes',
   })
   async obtenerConfiguracion() {
     try {
@@ -271,9 +270,21 @@ export class ReportesBasicController {
         success: true,
         configuracion: {
           tipos_reporte: [
-            { value: 'FINANCIERO', label: 'Reporte Financiero', icon: 'cash-outline' },
-            { value: 'OPERACIONAL', label: 'Reporte Operacional', icon: 'analytics-outline' },
-            { value: 'MERCADO', label: 'Por Mercado', icon: 'business-outline' },
+            {
+              value: 'FINANCIERO',
+              label: 'Reporte Financiero',
+              icon: 'cash-outline',
+            },
+            {
+              value: 'OPERACIONAL',
+              label: 'Reporte Operacional',
+              icon: 'analytics-outline',
+            },
+            {
+              value: 'MERCADO',
+              label: 'Por Mercado',
+              icon: 'business-outline',
+            },
             { value: 'LOCAL', label: 'Por Local', icon: 'storefront-outline' },
           ],
           periodos: [
@@ -282,12 +293,12 @@ export class ReportesBasicController {
             { value: 'ANUAL', label: 'Anual' },
           ],
           formatos: [
-            { value: 'JSON', label: 'Vista Previa', icon: 'eye-outline' },
-            { value: 'PDF', label: 'PDF', icon: 'document-text-outline' },
-            { value: 'EXCEL', label: 'Excel', icon: 'grid-outline' },
+            { value: 'json', label: 'Vista Previa', icon: 'eye-outline' },
+            { value: 'pdf', label: 'PDF', icon: 'document-text-outline' },
+            { value: 'xlsx', label: 'Excel', icon: 'grid-outline' },
           ],
           mercados_disponibles: mercados,
-          tipos_local: tiposLocal.map(t => t.tipo_local).filter(Boolean),
+          tipos_local: tiposLocal.map((t) => t.tipo_local).filter(Boolean),
         },
       };
     } catch (error) {
@@ -300,9 +311,9 @@ export class ReportesBasicController {
 
   @Get('test')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Test de conectividad',
-    description: 'Verificar que la API funciona correctamente'
+    description: 'Verificar que la API funciona correctamente',
   })
   async testConectividad() {
     return {
@@ -322,7 +333,7 @@ export class ReportesBasicController {
   @Get('demo')
   @Public()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Demo público de configuración',
     description: 'Endpoint público para probar datos sin autenticación',
   })
@@ -336,8 +347,8 @@ export class ReportesBasicController {
             nombre_mercado: true,
             direccion: true,
             _count: {
-              select: { locales: true }
-            }
+              select: { locales: true },
+            },
           },
         }),
         this.prisma.local.findMany({
@@ -358,13 +369,31 @@ export class ReportesBasicController {
           total_facturas: estadisticasBasicas._count.id,
           total_recaudado: Number(estadisticasBasicas._sum?.monto) || 0,
           mercados_sample: mercados.slice(0, 3),
-          tipos_local_disponibles: tiposLocal.map(t => t.tipo_local).filter(Boolean),
+          tipos_local_disponibles: tiposLocal
+            .map((t) => t.tipo_local)
+            .filter(Boolean),
           configuracion_ui: {
             tipos_reporte: [
-              { value: 'FINANCIERO', label: 'Reporte Financiero', icon: 'cash-outline' },
-              { value: 'OPERACIONAL', label: 'Reporte Operacional', icon: 'analytics-outline' },
-              { value: 'MERCADO', label: 'Por Mercado', icon: 'business-outline' },
-              { value: 'LOCAL', label: 'Por Local', icon: 'storefront-outline' },
+              {
+                value: 'FINANCIERO',
+                label: 'Reporte Financiero',
+                icon: 'cash-outline',
+              },
+              {
+                value: 'OPERACIONAL',
+                label: 'Reporte Operacional',
+                icon: 'analytics-outline',
+              },
+              {
+                value: 'MERCADO',
+                label: 'Por Mercado',
+                icon: 'business-outline',
+              },
+              {
+                value: 'LOCAL',
+                label: 'Por Local',
+                icon: 'storefront-outline',
+              },
             ],
             periodos: [
               { value: 'MENSUAL', label: 'Mensual' },
@@ -372,11 +401,11 @@ export class ReportesBasicController {
               { value: 'ANUAL', label: 'Anual' },
             ],
             formatos: [
-              { value: 'JSON', label: 'Vista Previa', icon: 'eye-outline' },
-              { value: 'PDF', label: 'PDF', icon: 'document-text-outline' },
-              { value: 'EXCEL', label: 'Excel', icon: 'grid-outline' },
+              { value: 'json', label: 'Vista Previa', icon: 'eye-outline' },
+              { value: 'pdf', label: 'PDF', icon: 'document-text-outline' },
+              { value: 'xlsx', label: 'Excel', icon: 'grid-outline' },
             ],
-          }
+          },
         },
         timestamp: new Date().toISOString(),
         note: 'Este es un endpoint de demostración público. Para acceso completo use autenticación.',
@@ -392,21 +421,22 @@ export class ReportesBasicController {
 
   // Métodos privados para generar diferentes tipos de reportes
   private async generarReporteFinanciero(whereCondition: any) {
-    const [estadisticas, totalesPorEstado, facturasPorMercado] = await Promise.all([
-      this.prisma.factura.aggregate({
-        where: whereCondition,
-        _sum: { monto: true },
-        _count: { id: true },
-        _avg: { monto: true },
-      }),
-      this.prisma.factura.groupBy({
-        by: ['estado'],
-        where: whereCondition,
-        _sum: { monto: true },
-        _count: { id: true },
-      }),
-      this.obtenerFacturasPorMercado(whereCondition),
-    ]);
+    const [estadisticas, totalesPorEstado, facturasPorMercado] =
+      await Promise.all([
+        this.prisma.factura.aggregate({
+          where: whereCondition,
+          _sum: { monto: true },
+          _count: { id: true },
+          _avg: { monto: true },
+        }),
+        this.prisma.factura.groupBy({
+          by: ['estado'],
+          where: whereCondition,
+          _sum: { monto: true },
+          _count: { id: true },
+        }),
+        this.obtenerFacturasPorMercado(whereCondition),
+      ]);
 
     return {
       resumen: {
@@ -461,14 +491,18 @@ export class ReportesBasicController {
     });
 
     return {
-      locales: locales.map(local => ({
+      locales: locales.map((local) => ({
         id: local.id,
         numero_local: local.numero_local,
         nombre_local: local.nombre_local,
         mercado: local.mercado.nombre_mercado,
         total_facturas: local.facturas.length,
-        total_recaudado: local.facturas.reduce((sum, f) => sum + Number(f.monto), 0),
-        facturas_pagadas: local.facturas.filter(f => f.estado === 'PAGADA').length,
+        total_recaudado: local.facturas.reduce(
+          (sum, f) => sum + Number(f.monto),
+          0,
+        ),
+        facturas_pagadas: local.facturas.filter((f) => f.estado === 'PAGADA')
+          .length,
       })),
     };
   }
@@ -488,14 +522,18 @@ export class ReportesBasicController {
       },
     });
 
-    return mercados.map(mercado => {
-      const todasFacturas = mercado.locales.flatMap(local => local.facturas);
+    return mercados.map((mercado) => {
+      const todasFacturas = mercado.locales.flatMap((local) => local.facturas);
       return {
         mercado_id: mercado.id,
         nombre_mercado: mercado.nombre_mercado,
-        total_recaudado: todasFacturas.reduce((sum, f) => sum + Number(f.monto), 0),
+        total_recaudado: todasFacturas.reduce(
+          (sum, f) => sum + Number(f.monto),
+          0,
+        ),
         total_facturas: todasFacturas.length,
-        facturas_pagadas: todasFacturas.filter(f => f.estado === 'PAGADA').length,
+        facturas_pagadas: todasFacturas.filter((f) => f.estado === 'PAGADA')
+          .length,
         total_locales: mercado.locales.length,
       };
     });
