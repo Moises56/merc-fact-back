@@ -1,9 +1,4 @@
-import {
-  Controller,
-  Get,
-  HttpCode,
-  HttpStatus,
-} from '@nestjs/common';
+import { Controller, Get, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
@@ -14,7 +9,7 @@ export class ReportesDemoController {
 
   @Get('test')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Test público sin autenticación',
     description: 'Verificar conectividad básica',
   })
@@ -34,7 +29,7 @@ export class ReportesDemoController {
 
   @Get('configuracion')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Configuración pública para la app Ionic',
     description: 'Datos de configuración sin autenticación',
   })
@@ -90,9 +85,9 @@ export class ReportesDemoController {
             { value: 'ANUAL', label: 'Anual' },
           ],
           formatos: [
-            { value: 'JSON', label: 'Vista Previa', icon: 'eye-outline' },
-            { value: 'PDF', label: 'PDF', icon: 'document-text-outline' },
-            { value: 'EXCEL', label: 'Excel', icon: 'grid-outline' },
+            { value: 'json', label: 'Vista Previa', icon: 'eye-outline' },
+            { value: 'pdf', label: 'PDF', icon: 'document-text-outline' },
+            { value: 'xlsx', label: 'Excel', icon: 'grid-outline' },
           ],
           mercados_disponibles: mercados,
           tipos_local: tiposLocal.map((t) => t.tipo_local).filter(Boolean),
@@ -110,26 +105,22 @@ export class ReportesDemoController {
 
   @Get('stats')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Estadísticas básicas públicas',
     description: 'Estadísticas generales del sistema',
   })
   async obtenerEstadisticasPublicas() {
     try {
-      const [
-        totalMercados,
-        totalLocales,
-        totalFacturas,
-        estadisticasFacturas,
-      ] = await Promise.all([
-        this.prisma.mercado.count({ where: { isActive: true } }),
-        this.prisma.local.count(),
-        this.prisma.factura.count(),
-        this.prisma.factura.aggregate({
-          _sum: { monto: true },
-          _avg: { monto: true },
-        }),
-      ]);
+      const [totalMercados, totalLocales, totalFacturas, estadisticasFacturas] =
+        await Promise.all([
+          this.prisma.mercado.count({ where: { isActive: true } }),
+          this.prisma.local.count(),
+          this.prisma.factura.count(),
+          this.prisma.factura.aggregate({
+            _sum: { monto: true },
+            _avg: { monto: true },
+          }),
+        ]);
 
       return {
         success: true,
