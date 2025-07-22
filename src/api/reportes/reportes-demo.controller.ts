@@ -40,7 +40,8 @@ export class ReportesDemoController {
   })
   async obtenerConfiguracionPublica() {
     try {
-      const [mercados, tiposLocal] = await Promise.all([
+
+      const [mercados, tiposLocal, mercadosLocales] = await Promise.all([
         this.prisma.mercado.findMany({
           where: { isActive: true },
           select: {
@@ -57,7 +58,33 @@ export class ReportesDemoController {
           distinct: ['tipo_local'],
           where: { tipo_local: { not: null } },
         }),
+        this.prisma.mercado.findMany({
+          where: { isActive: true },
+          include: {
+            locales: {
+              include: {
+                facturas: {
+                  select: { monto: true },
+                },
+              },
+            },
+          },
+        }),
       ]);
+
+      // Mapear el total recaudado a cada mercado disponible
+      const mercadosConRecaudado = mercados.map((mercado) => {
+        const mercadoLocal = mercadosLocales.find(m => m.id === mercado.id);
+        const total_recaudado = mercadoLocal
+          ? mercadoLocal.locales.reduce((sumLocales, local) => {
+              return sumLocales + local.facturas.reduce((sumFact, f) => sumFact + Number(f.monto), 0);
+            }, 0)
+          : 0;
+        return {
+          ...mercado,
+          total_recaudado,
+        };
+      });
 
       return {
         success: true,
@@ -94,7 +121,7 @@ export class ReportesDemoController {
             { value: 'PDF', label: 'PDF', icon: 'document-text-outline' },
             { value: 'EXCEL', label: 'Excel', icon: 'grid-outline' },
           ],
-          mercados_disponibles: mercados,
+          mercados_disponibles: mercadosConRecaudado,
           tipos_local: tiposLocal.map((t) => t.tipo_local).filter(Boolean),
         },
         timestamp: new Date().toISOString(),
