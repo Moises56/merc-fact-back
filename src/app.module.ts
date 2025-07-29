@@ -15,6 +15,7 @@ import { DashboardModule } from './api/dashboard/dashboard.module';
 import { ReportesModule } from './api/reportes/reportes.module';
 import { SeedModule } from './seed/seed.module';
 import { AuditInterceptor } from './common/audit/audit.interceptor';
+import { ConsultaEcModule } from './consulta-ec/consulta-ec.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { AuditInterceptor } from './common/audit/audit.interceptor';
     DashboardModule,
     ReportesModule,
     SeedModule,
+    ConsultaEcModule,
   ],
   controllers: [AppController],
   providers: [
