@@ -27,7 +27,6 @@ export class ConsultaIcsController {
       `Consulta ICS - Parámetros: ${JSON.stringify({
         ics: query.ics,
         dni: query.dni,
-        ubicacion: query.ubicacion || 'No especificada',
         timestamp: new Date().toISOString(),
         endpoint: '/consultaICS'
       })}`,
@@ -36,7 +35,7 @@ export class ConsultaIcsController {
     const resultado = await this.consultaIcsService.getConsultaICS(query);
     
     this.logger.log(
-      `Consulta ICS completada - Usuario: ${resultado.nombre} - Total: ${resultado.totalGeneral} - Ubicación: ${query.ubicacion || 'No especificada'}`
+      `Consulta ICS completada - Usuario: ${resultado.nombre} - Total: ${resultado.totalGeneral}`
     );
     
     return resultado;
@@ -52,7 +51,6 @@ export class ConsultaIcsController {
       `Consulta ICS con Amnistía - Parámetros: ${JSON.stringify({
         ics: query.ics,
         dni: query.dni,
-        ubicacion: query.ubicacion || 'No especificada',
         timestamp: new Date().toISOString(),
         endpoint: '/consultaICS/amnistia'
       })}`,
@@ -61,7 +59,7 @@ export class ConsultaIcsController {
     const resultado = await this.consultaIcsService.getConsultaICSAmnistia(query);
     
     this.logger.log(
-      `Consulta ICS con Amnistía completada - Usuario: ${resultado.nombre} - Total: ${resultado.totalGeneral} - Ubicación: ${query.ubicacion || 'No especificada'} - Amnistía aplicada: ${resultado.amnistiaVigente}`
+      `Consulta ICS con Amnistía completada - Usuario: ${resultado.nombre} - Total: ${resultado.totalGeneral} - Amnistía aplicada: ${resultado.amnistiaVigente}`
     );
     
     return resultado;

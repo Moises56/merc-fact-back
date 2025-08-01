@@ -11,7 +11,5 @@ export class GetConsultaICSDto {
   @IsString()
   dni?: string; // DNI (13 dígitos) o RTN (14 dígitos) - validación flexible
 
-  @IsOptional()
-  @IsString()
-  ubicacion?: string; // Ubicación del usuario para logs
+
 }

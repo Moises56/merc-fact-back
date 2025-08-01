@@ -135,6 +135,7 @@ model AuditLog {
   datosDespues String? // JSON con datos nuevos
   ip          String?
   userAgent   String?
+  ubicacion   String?  // Ubicación del usuario
   
   // Relaciones
   userId      String

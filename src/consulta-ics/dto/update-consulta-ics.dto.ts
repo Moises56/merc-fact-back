@@ -46,6 +46,12 @@ export class ConsultaICSResponseDto {
   totalGeneral: string; // Formateado como moneda (L)
   totalGeneralNumerico: number; // Valor numérico para cálculos
   
+  // Descuento de pronto pago
+  descuentoProntoPago: string; // Formateado como moneda (L)
+  descuentoProntoPagoNumerico: number; // Valor numérico del descuento
+  totalAPagar: string; // Total después del descuento, formateado como moneda (L)
+  totalAPagarNumerico: number; // Valor numérico del total a pagar
+  
   // Campos para la amnistía tributaria
   amnistiaVigente?: boolean;
   fechaFinAmnistia?: string | null;

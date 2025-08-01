@@ -29,12 +29,11 @@ export class ConsultaIcsService {
     amnistia: boolean,
   ): Promise<ConsultaICSResponseDto> {
     try {
-      // Log detallado con ubicación del usuario
+      // Log detallado
       this.logger.log(
         `Consulta ICS ${amnistia ? 'con amnistía' : 'normal'} - Parámetros: ${JSON.stringify({
           ics: dto.ics,
           dni: dto.dni,
-          ubicacion: dto.ubicacion || 'No especificada',
           timestamp: new Date().toISOString()
         })}`
       );
@@ -45,11 +44,11 @@ export class ConsultaIcsService {
       // Verificar cache
       const cachedResult = this.getFromCacheICS(cacheKey);
       if (cachedResult) {
-        this.logger.log(`Cache ICS hit para: ${cacheKey} - Ubicación: ${dto.ubicacion || 'No especificada'}`);
+        this.logger.log(`Cache ICS hit para: ${cacheKey}`);
         return cachedResult;
       }
 
-      this.logger.log(`Cache ICS miss para: ${cacheKey} - Ubicación: ${dto.ubicacion || 'No especificada'}`);
+      this.logger.log(`Cache ICS miss para: ${cacheKey}`);
 
       // Construir consulta SQL para ICS
       const query = this.buildICSQuery();
@@ -62,29 +61,29 @@ export class ConsultaIcsService {
       const registros = await this.readonlyDb.executeQuery(query, params);
 
       if (!registros || registros.length === 0) {
-        this.logger.warn(`No se encontraron registros ICS para: ${JSON.stringify(params)} - Ubicación: ${dto.ubicacion || 'No especificada'}`);
+        this.logger.warn(`No se encontraron registros ICS para: ${JSON.stringify(params)}`);
         throw new NotFoundException('No se encontraron registros para los parámetros proporcionados');
       }
 
-      this.logger.log(`Registros ICS encontrados: ${registros.length} - Ubicación: ${dto.ubicacion || 'No especificada'}`);
+      this.logger.log(`Registros ICS encontrados: ${registros.length}`);
 
       // Procesar registros según el tipo de consulta
       let resultado: ConsultaICSResponseDto;
       if (dto.ics) {
-        resultado = this.procesarRegistrosPorICS(registros, amnistia, dto.ubicacion);
+        resultado = this.procesarRegistrosPorICS(registros, amnistia);
       } else {
-        resultado = this.procesarRegistrosPorDNI(registros, amnistia, dto.ubicacion);
+        resultado = this.procesarRegistrosPorDNI(registros, amnistia);
       }
 
       // Guardar en cache
       this.setCacheICS(cacheKey, resultado);
       this.cleanOldCacheICS();
 
-      this.logger.log(`Consulta ICS completada exitosamente - Total: ${resultado.totalGeneral} - Ubicación: ${dto.ubicacion || 'No especificada'}`);
+      this.logger.log(`Consulta ICS completada exitosamente - Total: ${resultado.totalGeneral}`);
       return resultado;
 
     } catch (error) {
-      this.logger.error(`Error en consulta ICS: ${error.message} - Ubicación: ${dto.ubicacion || 'No especificada'}`, error.stack);
+      this.logger.error(`Error en consulta ICS: ${error.message}`, error.stack);
       throw error;
     }
   }
@@ -205,10 +204,10 @@ export class ConsultaIcsService {
     `;
   }
 
-  private procesarRegistrosPorICS(registros: any[], amnistia: boolean, ubicacion?: string): ConsultaICSResponseDto {
+  private procesarRegistrosPorICS(registros: any[], amnistia: boolean): ConsultaICSResponseDto {
     const primerRegistro = registros[0];
     
-    this.logger.log(`Procesando ${registros.length} registros por ICS - Ubicación: ${ubicacion || 'No especificada'}`);
+    this.logger.log(`Procesando ${registros.length} registros por ICS`);
 
     // Agrupar por año
     const registrosPorAnio = new Map<string, any[]>();
@@ -289,6 +288,10 @@ export class ConsultaIcsService {
       totalGeneralNumerico += totalNumerico;
     }
 
+    // Calcular descuento de pronto pago
+    const descuentoProntoPagoNumerico = this.calcularDescuentoProntoPago(detallesMora, registros);
+    const totalAPagarNumerico = totalGeneralNumerico - descuentoProntoPagoNumerico;
+
     return {
       nombre: primerRegistro.CONTRIBUYENTE,
       identidad: primerRegistro.RTN_DNI,
@@ -299,17 +302,21 @@ export class ConsultaIcsService {
       detallesMora,
       totalGeneral: this.formatearMoneda(totalGeneralNumerico),
       totalGeneralNumerico,
+      descuentoProntoPago: this.formatearMoneda(descuentoProntoPagoNumerico),
+      descuentoProntoPagoNumerico,
+      totalAPagar: this.formatearMoneda(totalAPagarNumerico),
+      totalAPagarNumerico,
       amnistiaVigente: amnistia,
       fechaFinAmnistia: amnistia ? '30/09/2025' : null,
       tipoConsulta: 'ics',
-      ubicacionConsulta: ubicacion
+      ubicacionConsulta: 'Sistema ICS'
     };
   }
 
-  private procesarRegistrosPorDNI(registros: any[], amnistia: boolean, ubicacion?: string): ConsultaICSResponseDto {
+  private procesarRegistrosPorDNI(registros: any[], amnistia: boolean): ConsultaICSResponseDto {
     const primerRegistro = registros[0];
     
-    this.logger.log(`Procesando ${registros.length} registros por DNI/RTN - Ubicación: ${ubicacion || 'No especificada'}`);
+    this.logger.log(`Procesando ${registros.length} registros por DNI/RTN`);
 
     // Agrupar por empresa
     const registrosPorEmpresa = new Map<string, any[]>();
@@ -417,6 +424,16 @@ export class ConsultaIcsService {
       totalGeneralNumerico += totalEmpresaNumerico;
     }
 
+    // Recopilar todos los detalles de mora de todas las empresas para calcular el descuento
+    const todosLosDetalles: DetalleMoraICSDto[] = [];
+    empresas.forEach(empresa => {
+      todosLosDetalles.push(...empresa.detallesMora);
+    });
+    
+    // Calcular descuento de pronto pago
+    const descuentoProntoPagoNumerico = this.calcularDescuentoProntoPago(todosLosDetalles, registros);
+    const totalAPagarNumerico = totalGeneralNumerico - descuentoProntoPagoNumerico;
+
     return {
       nombre: primerRegistro.CONTRIBUYENTE,
       identidad: primerRegistro.RTN_DNI,
@@ -425,10 +442,14 @@ export class ConsultaIcsService {
       empresas,
       totalGeneral: this.formatearMoneda(totalGeneralNumerico),
       totalGeneralNumerico,
+      descuentoProntoPago: this.formatearMoneda(descuentoProntoPagoNumerico),
+      descuentoProntoPagoNumerico,
+      totalAPagar: this.formatearMoneda(totalAPagarNumerico),
+      totalAPagarNumerico,
       amnistiaVigente: amnistia,
       fechaFinAmnistia: amnistia ? '30/09/2025' : null,
       tipoConsulta: 'dni_rtn',
-      ubicacionConsulta: ubicacion
+      ubicacionConsulta: 'Sistema ICS'
     };
   }
 
@@ -437,6 +458,66 @@ export class ConsultaIcsService {
     
     // Fórmula de recargo: [(Impuesto + Tren Aseo + Bomberos + Otros) × 0.22 × Días] ÷ 360
     return (monto * 0.22 * dias) / 360;
+  }
+
+  private calcularDescuentoProntoPago(detallesMora: DetalleMoraICSDto[], registrosOriginales: any[]): number {
+    const fechaActual = new Date();
+    const mesActual = fechaActual.getMonth() + 1; // getMonth() es 0-based
+    const diaActual = fechaActual.getDate();
+    
+    // Solo aplica si estamos dentro de los primeros 10 días del mes
+    if (diaActual > 10) {
+      return 0;
+    }
+    
+    // Calcular cuántos meses completos quedan en el año desde el mes siguiente
+    const mesesRestantes = 12 - mesActual;
+    
+    // Necesita al menos 4 meses completos para aplicar el descuento
+    if (mesesRestantes < 4) {
+      return 0;
+    }
+    
+    // Calcular el mes a partir del cual se aplica el descuento (mes actual + 4)
+    const mesInicioDescuento = mesActual + 4;
+    
+    // Filtrar registros que califican para descuento y excluir obligaciones de contrato
+    const registrosConDescuento = registrosOriginales.filter(registro => {
+      const mes = registro.MES;
+      // Excluir obligaciones de contrato
+      if (mes && mes.toString().includes('Obligación de Contrato')) {
+        return false;
+      }
+      
+      // Extraer el número del mes del campo MES (formato: 2025-MM)
+      if (mes && mes.toString().includes('2025-')) {
+        const mesNumero = parseInt(mes.toString().split('-')[1]);
+        // Incluir solo los meses desde mesInicioDescuento hasta diciembre
+        return mesNumero >= mesInicioDescuento && mesNumero <= 12;
+      }
+      
+      return false;
+    });
+    
+    // Si no hay registros válidos para descuento, no hay descuento
+    if (registrosConDescuento.length === 0) {
+      return 0;
+    }
+    
+    // Calcular el total de impuestos base para los meses que califican
+    // (impuesto + tren de aseo + bomberos + otros) SIN incluir recargos
+    let totalImpuestosBase = 0;
+    registrosConDescuento.forEach(registro => {
+      const impuesto = parseFloat(registro.Impuesto) || 0;
+      const trenDeAseo = parseFloat(registro.Tren_de_Aseo) || 0;
+      const tasaBomberos = parseFloat(registro.Tasa_Bomberos) || 0;
+      const otros = parseFloat(registro.Otros) || 0;
+      
+      totalImpuestosBase += impuesto + trenDeAseo + tasaBomberos + otros;
+    });
+    
+    // El descuento es el 10% del total de impuestos base (sin recargos)
+    return totalImpuestosBase * 0.10;
   }
 
   private calcularDiasVencidosConAmnistiaICS(year: string): number {
