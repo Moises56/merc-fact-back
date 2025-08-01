@@ -1,0 +1,192 @@
+{
+	"info": {
+		"_postman_id": "consulta-ics-api-collection",
+		"name": "Consulta ICS API",
+		"description": "Colección para probar los endpoints de consulta ICS",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Consulta ICS - Sin parámetros (Error de validación)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/consultaICS",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"consultaICS"
+					]
+				},
+				"description": "Prueba de validación - debe devolver error 400"
+			},
+			"response": []
+		},
+		{
+			"name": "Consulta ICS - Por número ICS",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/consultaICS?ics=ICS-107444&ubicacion=Oficina Central",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"consultaICS"
+					],
+					"query": [
+						{
+							"key": "ics",
+							"value": "ICS-107444",
+							"description": "Número de empresa ICS"
+						},
+						{
+							"key": "ubicacion",
+							"value": "Oficina Central",
+							"description": "Ubicación del usuario para logs"
+						}
+					]
+				},
+				"description": "Consulta normal por número ICS"
+			},
+			"response": []
+		},
+		{
+			"name": "Consulta ICS - Por DNI/RTN",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/consultaICS?dni=08019016853852&ubicacion=Sucursal Norte",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"consultaICS"
+					],
+					"query": [
+						{
+							"key": "dni",
+							"value": "08019016853852",
+							"description": "DNI o RTN del contribuyente"
+						},
+						{
+							"key": "ubicacion",
+							"value": "Sucursal Norte",
+							"description": "Ubicación del usuario para logs"
+						}
+					]
+				},
+				"description": "Consulta normal por DNI/RTN"
+			},
+			"response": []
+		},
+		{
+			"name": "Consulta ICS con Amnistía - Por número ICS",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/consultaICS/amnistia?ics=ICS-107444&ubicacion=Oficina Central",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"consultaICS",
+						"amnistia"
+					],
+					"query": [
+						{
+							"key": "ics",
+							"value": "ICS-107444",
+							"description": "Número de empresa ICS"
+						},
+						{
+							"key": "ubicacion",
+							"value": "Oficina Central",
+							"description": "Ubicación del usuario para logs"
+						}
+					]
+				},
+				"description": "Consulta con amnistía aplicada por número ICS"
+			},
+			"response": []
+		},
+		{
+			"name": "Consulta ICS con Amnistía - Por DNI/RTN",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/consultaICS/amnistia?dni=08019016853852&ubicacion=Sucursal Norte",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"consultaICS",
+						"amnistia"
+					],
+					"query": [
+						{
+							"key": "dni",
+							"value": "08019016853852",
+							"description": "DNI o RTN del contribuyente"
+						},
+						{
+							"key": "ubicacion",
+							"value": "Sucursal Norte",
+							"description": "Ubicación del usuario para logs"
+						}
+					]
+				},
+				"description": "Consulta con amnistía aplicada por DNI/RTN"
+			},
+			"response": []
+		},
+		{
+			"name": "Consulta ICS - Ambos parámetros (válido)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/consultaICS?ics=ICS-107444&dni=08019016853852&ubicacion=Oficina Principal",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"consultaICS"
+					],
+					"query": [
+						{
+							"key": "ics",
+							"value": "ICS-107444",
+							"description": "Número de empresa ICS"
+						},
+						{
+							"key": "dni",
+							"value": "08019016853852",
+							"description": "DNI o RTN del contribuyente"
+						},
+						{
+							"key": "ubicacion",
+							"value": "Oficina Principal",
+							"description": "Ubicación del usuario para logs"
+						}
+					]
+				},
+				"description": "Consulta con ambos parámetros proporcionados"
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000",
+			"type": "string"
+		}
+	]
+}

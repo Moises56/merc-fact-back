@@ -16,6 +16,7 @@ import { ReportesModule } from './api/reportes/reportes.module';
 import { SeedModule } from './seed/seed.module';
 import { AuditInterceptor } from './common/audit/audit.interceptor';
 import { ConsultaEcModule } from './consulta-ec/consulta-ec.module';
+import { ConsultaIcsModule } from './consulta-ics/consulta-ics.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { ConsultaEcModule } from './consulta-ec/consulta-ec.module';
     ReportesModule,
     SeedModule,
     ConsultaEcModule,
+    ConsultaIcsModule,
   ],
   controllers: [AppController],
   providers: [
