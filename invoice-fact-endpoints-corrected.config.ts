@@ -70,7 +70,7 @@ export const API_CONFIG = {
   VERSION: 'v1',
   
   // Timeout for requests (in milliseconds)
-  TIMEOUT: 30000,
+  TIMEOUT: 120000,
   
   // Headers
   HEADERS: {

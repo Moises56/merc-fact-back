@@ -15,8 +15,10 @@ import { DashboardModule } from './api/dashboard/dashboard.module';
 import { ReportesModule } from './api/reportes/reportes.module';
 import { SeedModule } from './seed/seed.module';
 import { AuditInterceptor } from './common/audit/audit.interceptor';
+import { PerformanceInterceptor } from './common/interceptors/performance.interceptor';
 import { ConsultaEcModule } from './consulta-ec/consulta-ec.module';
 import { ConsultaIcsModule } from './consulta-ics/consulta-ics.module';
+import { HealthModule } from './api/health/health.module';
 
 @Module({
   imports: [
@@ -42,6 +44,7 @@ import { ConsultaIcsModule } from './consulta-ics/consulta-ics.module';
     SeedModule,
     ConsultaEcModule,
     ConsultaIcsModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [
@@ -49,6 +52,10 @@ import { ConsultaIcsModule } from './consulta-ics/consulta-ics.module';
     {
       provide: APP_INTERCEPTOR,
       useClass: AuditInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: PerformanceInterceptor,
     },
   ],
 })

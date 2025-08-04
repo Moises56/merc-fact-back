@@ -28,12 +28,13 @@ export class ReadonlyDatabaseService implements OnModuleDestroy {
         enableArithAbort: true,
       },
       pool: {
-        max: 10,
-        min: 0,
-        idleTimeoutMillis: 30000,
+        max: 20,
+        min: 5,
+        idleTimeoutMillis: 60000,
+        acquireTimeoutMillis: 30000,
       },
-      connectionTimeout: 30000,
-      requestTimeout: 30000,
+      connectionTimeout: 60000,
+      requestTimeout: 120000,
     };
 
     // Validar que todas las variables requeridas estén configuradas
@@ -80,6 +81,47 @@ export class ReadonlyDatabaseService implements OnModuleDestroy {
     } catch (error) {
       const duration = Date.now() - startTime;
       this.logger.error(`Error en consulta después de ${duration}ms:`, error.message);
+      throw error;
+    }
+  }
+
+  // Método específico para consultas ICS con timeout optimizado
+  async executeICSQuery(query: string, parameters?: any): Promise<any[]> {
+    const startTime = Date.now();
+    try {
+      const pool = await this.getConnection();
+      const request = pool.request();
+      
+      // Timeout específico para consultas ICS (30 segundos)
+      request.timeout = 30000;
+      
+      // Agregar parámetros si existen
+      if (parameters) {
+        Object.keys(parameters).forEach(key => {
+          this.logger.log(`[ICS] Agregando parámetro: ${key} = ${parameters[key]}`);
+          request.input(key, parameters[key]);
+        });
+      }
+      
+      this.logger.log('[ICS] Ejecutando consulta optimizada...');
+      const result = await request.query(query);
+      const duration = Date.now() - startTime;
+      
+      this.logger.log(`[ICS] Consulta ejecutada en ${duration}ms, ${result.recordset.length} registros`);
+      
+      if (duration > 10000) {
+        this.logger.warn(`[ICS] Consulta lenta detectada: ${duration}ms`);
+      }
+      
+      return result.recordset;
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      this.logger.error(`[ICS] Error en consulta después de ${duration}ms:`, error.message);
+      
+      if (error.message.includes('timeout')) {
+        this.logger.error('[ICS] Timeout en consulta - considerar optimización adicional');
+      }
+      
       throw error;
     }
   }

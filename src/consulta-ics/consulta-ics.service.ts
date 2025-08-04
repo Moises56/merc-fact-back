@@ -57,8 +57,8 @@ export class ConsultaIcsService {
         dni: dto.dni || null,
       };
 
-      // Ejecutar consulta
-      const registros = await this.readonlyDb.executeQuery(query, params);
+      // Ejecutar consulta con método optimizado para ICS
+      const registros = await this.readonlyDb.executeICSQuery(query, params);
 
       if (!registros || registros.length === 0) {
         this.logger.warn(`No se encontraron registros ICS para: ${JSON.stringify(params)}`);
@@ -114,6 +114,7 @@ export class ConsultaIcsService {
           INNER JOIN MI_OBLIGACION OBL WITH (NOLOCK) ON FAC.ID_FACTURABLE = OBL.ID_FACTURABLE 
                      AND OBL.ANIO >= 2015
           INNER JOIN MI_MOVIMIENTO MOV WITH (NOLOCK) ON OBL.ID_OBLIGACION = MOV.ID_OBLIGACION 
+                    -- AND MOV.BALANCE > 0
           INNER JOIN MI_TIPO_MOVIMIENTO TM WITH (NOLOCK) ON MOV.ID_TIPO_MOVIMIENTO = TM.ID_TIPO_MOVIMIENTO
           INNER JOIN MI_SUCURSAL_LICENCIA LB WITH (NOLOCK) ON ART.ID_ARTICULO = LB.ID_ARTICULO 
                      AND LB.SN_ACTIVO = 1
