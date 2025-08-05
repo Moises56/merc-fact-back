@@ -1,6 +1,15 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { GetConsultaECDto } from './dto/create-consulta-ec.dto';
-import { ConsultaECResponseDto, DetalleMoraDto, PropiedadDto } from './dto/update-consulta-ec.dto';
+import {
+  ConsultaECResponseDto,
+  DetalleMoraDto,
+  PropiedadDto,
+} from './dto/update-consulta-ec.dto';
 import { ReadonlyDatabaseService } from './readonly-database.service';
 
 interface CacheEntry {
@@ -20,7 +29,9 @@ export class ConsultaEcService {
     return this.buscarEstadoCuenta(dto, false);
   }
 
-  async getConsultaECAmnistia(dto: GetConsultaECDto): Promise<ConsultaECResponseDto> {
+  async getConsultaECAmnistia(
+    dto: GetConsultaECDto,
+  ): Promise<ConsultaECResponseDto> {
     return this.buscarEstadoCuenta(dto, true);
   }
 
@@ -36,7 +47,7 @@ export class ConsultaEcService {
 
       // Generar clave de cache
       const cacheKey = `${dto.claveCatastral || dto.dni}_${amnistia}`;
-      
+
       // Verificar cache
       const cachedResult = this.getFromCache(cacheKey);
       if (cachedResult) {
@@ -50,25 +61,28 @@ export class ConsultaEcService {
       const query = this.buildQuery();
       const parameters: any = {
         artIdDoc: dto.claveCatastral || null,
-        actIdCard: dto.dni || null
+        actIdCard: dto.dni || null,
       };
 
       // Ejecutar consulta
       const registros = await this.readonlyDb.executeQuery(query, parameters);
 
       if (!registros || registros.length === 0) {
-        throw new NotFoundException('No se encontraron registros para los parámetros proporcionados');
+        throw new NotFoundException(
+          'No se encontraron registros para los parámetros proporcionados',
+        );
       }
 
       // Determinar tipo de consulta y procesar resultados
       const tipoConsulta = dto.claveCatastral ? 'clave_catastral' : 'dni';
-      const resultado = tipoConsulta === 'clave_catastral' 
-        ? this.procesarRegistrosPorClaveCatastral(registros, amnistia)
-        : this.procesarRegistrosPorDNI(registros, amnistia);
-      
+      const resultado =
+        tipoConsulta === 'clave_catastral'
+          ? this.procesarRegistrosPorClaveCatastral(registros, amnistia)
+          : this.procesarRegistrosPorDNI(registros, amnistia);
+
       // Guardar en cache
       this.setCache(cacheKey, resultado);
-      
+
       return resultado;
     } catch (error) {
       this.logger.error(`Error en buscarEstadoCuenta: ${error.message}`);
@@ -125,7 +139,10 @@ export class ConsultaEcService {
     `;
   }
 
-  private procesarRegistrosPorClaveCatastral(registros: any[], amnistia: boolean): ConsultaECResponseDto {
+  private procesarRegistrosPorClaveCatastral(
+    registros: any[],
+    amnistia: boolean,
+  ): ConsultaECResponseDto {
     const formatoMoneda = new Intl.NumberFormat('es-HN', {
       style: 'currency',
       currency: 'HNL',
@@ -133,13 +150,13 @@ export class ConsultaEcService {
     });
 
     const detallesMora: DetalleMoraDto[] = [];
-    
+
     for (const registro of registros) {
       const year = parseInt(registro.OBL_YEAR);
       const yearStr = year.toString();
-      
+
       // Calcular días vencidos
-      const dias = amnistia 
+      const dias = amnistia
         ? this.calcularDiasVencidosConAmnistia(yearStr)
         : registro.DIAS || 0;
 
@@ -147,14 +164,19 @@ export class ConsultaEcService {
       const impuestoNumerico = parseFloat(registro.Impuesto) || 0;
       const trenDeAseoNumerico = parseFloat(registro['Tren de Aseo']) || 0;
       const tasaBomberosNumerico = parseFloat(registro['Tasa Bomberos']) || 0;
-      
+
       // Calcular recargo (2% mensual)
       const mesesVencidos = Math.ceil(dias / 30);
       const porcentajeRecargo = mesesVencidos * 0.02;
-      const baseRecargo = impuestoNumerico + trenDeAseoNumerico + tasaBomberosNumerico;
+      const baseRecargo =
+        impuestoNumerico + trenDeAseoNumerico + tasaBomberosNumerico;
       const recargoNumerico = baseRecargo * porcentajeRecargo;
-      
-      const totalNumerico = impuestoNumerico + trenDeAseoNumerico + tasaBomberosNumerico + recargoNumerico;
+
+      const totalNumerico =
+        impuestoNumerico +
+        trenDeAseoNumerico +
+        tasaBomberosNumerico +
+        recargoNumerico;
 
       // Formatear valores
       const impuesto = formatoMoneda.format(impuestoNumerico);
@@ -176,7 +198,8 @@ export class ConsultaEcService {
         tasaBomberosNumerico,
         recargoNumerico,
         totalNumerico,
-        amnistiaAplicada: amnistia && (year < 2025 || (year === 2025 && dias === 0)),
+        amnistiaAplicada:
+          amnistia && (year < 2025 || (year === 2025 && dias === 0)),
       });
     }
 
@@ -206,7 +229,10 @@ export class ConsultaEcService {
     };
   }
 
-  private procesarRegistrosPorDNI(registros: any[], amnistia: boolean): ConsultaECResponseDto {
+  private procesarRegistrosPorDNI(
+    registros: any[],
+    amnistia: boolean,
+  ): ConsultaECResponseDto {
     const formatoMoneda = new Intl.NumberFormat('es-HN', {
       style: 'currency',
       currency: 'HNL',
@@ -215,7 +241,7 @@ export class ConsultaEcService {
 
     // Agrupar registros por clave catastral
     const registrosPorClave = new Map<string, any[]>();
-    
+
     for (const registro of registros) {
       const claveCatastral = registro.ART_ID_DOC;
       if (!registrosPorClave.has(claveCatastral)) {
@@ -235,9 +261,9 @@ export class ConsultaEcService {
       for (const registro of registrosPropiedad) {
         const year = parseInt(registro.OBL_YEAR);
         const yearStr = year.toString();
-        
+
         // Calcular días vencidos
-        const dias = amnistia 
+        const dias = amnistia
           ? this.calcularDiasVencidosConAmnistia(yearStr)
           : registro.DIAS || 0;
 
@@ -245,14 +271,19 @@ export class ConsultaEcService {
         const impuestoNumerico = parseFloat(registro.Impuesto) || 0;
         const trenDeAseoNumerico = parseFloat(registro['Tren de Aseo']) || 0;
         const tasaBomberosNumerico = parseFloat(registro['Tasa Bomberos']) || 0;
-        
+
         // Calcular recargo (2% mensual)
         const mesesVencidos = Math.ceil(dias / 30);
         const porcentajeRecargo = mesesVencidos * 0.02;
-        const baseRecargo = impuestoNumerico + trenDeAseoNumerico + tasaBomberosNumerico;
+        const baseRecargo =
+          impuestoNumerico + trenDeAseoNumerico + tasaBomberosNumerico;
         const recargoNumerico = baseRecargo * porcentajeRecargo;
-        
-        const totalNumerico = impuestoNumerico + trenDeAseoNumerico + tasaBomberosNumerico + recargoNumerico;
+
+        const totalNumerico =
+          impuestoNumerico +
+          trenDeAseoNumerico +
+          tasaBomberosNumerico +
+          recargoNumerico;
         totalPropiedadNumerico += totalNumerico;
 
         // Formatear valores
@@ -275,7 +306,8 @@ export class ConsultaEcService {
           tasaBomberosNumerico,
           recargoNumerico,
           totalNumerico,
-          amnistiaAplicada: amnistia && (year < 2025 || (year === 2025 && dias === 0)),
+          amnistiaAplicada:
+            amnistia && (year < 2025 || (year === 2025 && dias === 0)),
         });
       }
 
@@ -286,7 +318,8 @@ export class ConsultaEcService {
       propiedades.push({
         claveCatastral,
         colonia: primerRegistroPropiedad?.SECTOR_COLONIA || 'No disponible',
-        nombreColonia: primerRegistroPropiedad?.NOMBRE_COLONIA || 'No disponible',
+        nombreColonia:
+          primerRegistroPropiedad?.NOMBRE_COLONIA || 'No disponible',
         detallesMora,
         totalPropiedad: formatoMoneda.format(totalPropiedadNumerico),
         totalPropiedadNumerico,
@@ -296,7 +329,9 @@ export class ConsultaEcService {
     }
 
     // Ordenar propiedades por clave catastral
-    propiedades.sort((a, b) => a.claveCatastral.localeCompare(b.claveCatastral));
+    propiedades.sort((a, b) =>
+      a.claveCatastral.localeCompare(b.claveCatastral),
+    );
 
     const totalGeneral = formatoMoneda.format(totalGeneralNumerico);
     const primerRegistro = registros[0];
@@ -317,34 +352,40 @@ export class ConsultaEcService {
 
   private calcularDiasVencidosConAmnistia(year: string): number {
     if (!year || !/^[0-9]{4}$/.test(year)) return 0;
-    
+
     const fechaVencimiento = new Date(parseInt(year), 7, 31); // 31 de agosto
     fechaVencimiento.setHours(0, 0, 0, 0);
-    
+
     const fechaActual = new Date();
     fechaActual.setHours(0, 0, 0, 0);
-    
+
     const fechaFinAmnistia = new Date(2025, 8, 30); // 30 de septiembre 2025
     fechaFinAmnistia.setHours(0, 0, 0, 0);
-    
+
     // Si estamos después de la fecha de fin de amnistía, calcular días normalmente
     if (fechaActual > fechaFinAmnistia) {
       if (fechaActual < fechaVencimiento) return 0;
-      return Math.floor((fechaActual.getTime() - fechaVencimiento.getTime()) / (1000 * 60 * 60 * 24));
+      return Math.floor(
+        (fechaActual.getTime() - fechaVencimiento.getTime()) /
+          (1000 * 60 * 60 * 24),
+      );
     }
-    
+
     // Si la amnistía está vigente y el año es anterior a 2025, no hay días vencidos
     const yearNum = parseInt(year);
     if (yearNum < 2025) {
       return 0;
     }
-    
+
     // Para el año 2025, solo calcular días si ya venció
     if (yearNum === 2025) {
       if (fechaActual < fechaVencimiento) return 0;
-      return Math.floor((fechaActual.getTime() - fechaVencimiento.getTime()) / (1000 * 60 * 60 * 24));
+      return Math.floor(
+        (fechaActual.getTime() - fechaVencimiento.getTime()) /
+          (1000 * 60 * 60 * 24),
+      );
     }
-    
+
     return 0;
   }
 
@@ -370,13 +411,13 @@ export class ConsultaEcService {
   private getFromCache(key: string): ConsultaECResponseDto | null {
     const entry = this.cache.get(key);
     if (!entry) return null;
-    
+
     const now = Date.now();
     if (now - entry.timestamp > this.CACHE_TTL) {
       this.cache.delete(key);
       return null;
     }
-    
+
     return entry.data;
   }
 
@@ -385,7 +426,7 @@ export class ConsultaEcService {
       data,
       timestamp: Date.now(),
     });
-    
+
     // Limpiar cache viejo periódicamente
     if (this.cache.size > 100) {
       this.cleanOldCache();
