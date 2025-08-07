@@ -26,7 +26,9 @@ export class UserStatsService {
   constructor(private readonly prisma: PrismaService) {}
 
   // Registrar log de consulta
-  async logConsulta(data: CreateConsultaLogDto): Promise<ConsultaLogResponseDto> {
+  async logConsulta(
+    data: CreateConsultaLogDto,
+  ): Promise<ConsultaLogResponseDto> {
     try {
       const log = await this.prisma.consultaLog.create({
         data: {
@@ -70,7 +72,10 @@ export class UserStatsService {
         createdAt: log.createdAt,
       };
     } catch (error) {
-      this.logger.error(`Error al registrar log de consulta: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error al registrar log de consulta: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -123,7 +128,10 @@ export class UserStatsService {
         updatedAt: location.updatedAt,
       };
     } catch (error) {
-      this.logger.error(`Error al asignar ubicación: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error al asignar ubicación: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -175,18 +183,26 @@ export class UserStatsService {
       }
 
       const totalConsultas = logs.length;
-      const consultasEC = logs.filter(l => l.consultaType === 'EC').length;
-      const consultasICS = logs.filter(l => l.consultaType === 'ICS').length;
-      const consultasExitosas = logs.filter(l => l.resultado === 'SUCCESS').length;
-      const consultasConError = logs.filter(l => l.resultado === 'ERROR').length;
-      const consultasNoEncontradas = logs.filter(l => l.resultado === 'NOT_FOUND').length;
+      const consultasEC = logs.filter((l) => l.consultaType === 'EC').length;
+      const consultasICS = logs.filter((l) => l.consultaType === 'ICS').length;
+      const consultasExitosas = logs.filter(
+        (l) => l.resultado === 'SUCCESS',
+      ).length;
+      const consultasConError = logs.filter(
+        (l) => l.resultado === 'ERROR',
+      ).length;
+      const consultasNoEncontradas = logs.filter(
+        (l) => l.resultado === 'NOT_FOUND',
+      ).length;
 
       const tiemposRespuesta = logs
-        .filter(l => l.duracionMs !== null)
-        .map(l => l.duracionMs!);
-      const promedioTiempoRespuesta = tiemposRespuesta.length > 0
-        ? tiemposRespuesta.reduce((a, b) => a + b, 0) / tiemposRespuesta.length
-        : 0;
+        .filter((l) => l.duracionMs !== null)
+        .map((l) => l.duracionMs!);
+      const promedioTiempoRespuesta =
+        tiemposRespuesta.length > 0
+          ? tiemposRespuesta.reduce((a, b) => a + b, 0) /
+            tiemposRespuesta.length
+          : 0;
 
       return {
         userId: user.id,
@@ -199,12 +215,16 @@ export class UserStatsService {
         consultasConError,
         consultasNoEncontradas,
         promedioTiempoRespuesta,
-        totalRecaudadoConsultado: totalRecaudado._sum.totalEncontrado?.toNumber() || 0,
+        totalRecaudadoConsultado:
+          totalRecaudado._sum.totalEncontrado?.toNumber() || 0,
         ultimaConsulta: logs[0]?.createdAt,
         periodoConsultado: this.formatDateRange(dateRange),
       };
     } catch (error) {
-      this.logger.error(`Error al obtener estadísticas de usuario: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error al obtener estadísticas de usuario: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -257,17 +277,23 @@ export class UserStatsService {
         totalConsultas,
         consultasEC,
         consultasICS,
-        promedioConsultasPorUsuario: usuarios.length > 0 ? totalConsultas / usuarios.length : 0,
+        promedioConsultasPorUsuario:
+          usuarios.length > 0 ? totalConsultas / usuarios.length : 0,
         usuariosStats,
       };
     } catch (error) {
-      this.logger.error(`Error al obtener estadísticas por ubicación: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error al obtener estadísticas por ubicación: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
 
   // Obtener estadísticas generales
-  async getGeneralStats(filters: GetUserStatsDto): Promise<GeneralStatsResponseDto> {
+  async getGeneralStats(
+    filters: GetUserStatsDto,
+  ): Promise<GeneralStatsResponseDto> {
     try {
       const dateRange = this.getDateRange(filters);
 
@@ -300,31 +326,39 @@ export class UserStatsService {
         }),
       ]);
 
-      const usuariosActivos = new Set(consultaLogs.map(log => log.userId)).size;
+      const usuariosActivos = new Set(consultaLogs.map((log) => log.userId))
+        .size;
       const totalConsultas = consultaLogs.length;
 
       const consultasPorTipo = {
-        EC: consultaLogs.filter(l => l.consultaType === 'EC').length,
-        ICS: consultaLogs.filter(l => l.consultaType === 'ICS').length,
+        EC: consultaLogs.filter((l) => l.consultaType === 'EC').length,
+        ICS: consultaLogs.filter((l) => l.consultaType === 'ICS').length,
       };
 
       const consultasPorResultado = {
-        SUCCESS: consultaLogs.filter(l => l.resultado === 'SUCCESS').length,
-        ERROR: consultaLogs.filter(l => l.resultado === 'ERROR').length,
-        NOT_FOUND: consultaLogs.filter(l => l.resultado === 'NOT_FOUND').length,
+        SUCCESS: consultaLogs.filter((l) => l.resultado === 'SUCCESS').length,
+        ERROR: consultaLogs.filter((l) => l.resultado === 'ERROR').length,
+        NOT_FOUND: consultaLogs.filter((l) => l.resultado === 'NOT_FOUND')
+          .length,
       };
 
       // Estadísticas por ubicación
       const estatsPorUbicacion: LocationStatsResponseDto[] = [];
       for (const ubicacion of ubicaciones) {
-        const locationStats = await this.getLocationStats(ubicacion.locationName, filters);
+        const locationStats = await this.getLocationStats(
+          ubicacion.locationName,
+          filters,
+        );
         estatsPorUbicacion.push(locationStats);
       }
 
       // Top 10 usuarios más activos
       const usuariosConConsultas = new Map<string, number>();
-      consultaLogs.forEach(log => {
-        usuariosConConsultas.set(log.userId, (usuariosConConsultas.get(log.userId) || 0) + 1);
+      consultaLogs.forEach((log) => {
+        usuariosConConsultas.set(
+          log.userId,
+          (usuariosConConsultas.get(log.userId) || 0) + 1,
+        );
       });
 
       const topUsuariosIds = Array.from(usuariosConConsultas.entries())
@@ -348,7 +382,10 @@ export class UserStatsService {
         topUsuarios,
       };
     } catch (error) {
-      this.logger.error(`Error al obtener estadísticas generales: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error al obtener estadísticas generales: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -389,7 +426,7 @@ export class UserStatsService {
         this.prisma.consultaLog.count({ where }),
       ]);
 
-      const logsResponse: ConsultaLogResponseDto[] = logs.map(log => ({
+      const logsResponse: ConsultaLogResponseDto[] = logs.map((log) => ({
         id: log.id,
         consultaType: log.consultaType as ConsultaType,
         consultaSubtype: log.consultaSubtype as ConsultaSubtype,
@@ -408,7 +445,10 @@ export class UserStatsService {
 
       return { logs: logsResponse, total };
     } catch (error) {
-      this.logger.error(`Error al obtener logs de consultas: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error al obtener logs de consultas: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -418,7 +458,11 @@ export class UserStatsService {
     let start: Date;
     let end: Date = now;
 
-    if (filters.timeRange === StatsTimeRange.CUSTOM && filters.startDate && filters.endDate) {
+    if (
+      filters.timeRange === StatsTimeRange.CUSTOM &&
+      filters.startDate &&
+      filters.endDate
+    ) {
       start = new Date(filters.startDate);
       end = new Date(filters.endDate);
     } else {
@@ -445,5 +489,146 @@ export class UserStatsService {
   private formatDateRange(dateRange: { start: Date; end: Date }): string {
     const formatDate = (date: Date) => date.toLocaleDateString('es-HN');
     return `${formatDate(dateRange.start)} - ${formatDate(dateRange.end)}`;
+  }
+
+  // Obtener todas las ubicaciones disponibles con usuarios asignados
+  async getAllLocations(): Promise<any[]> {
+    try {
+      // Obtener todas las ubicaciones únicas con usuarios asignados
+      const locationNames = await this.prisma.userLocation.findMany({
+        where: { isActive: true },
+        select: { locationName: true },
+        distinct: ['locationName'],
+        orderBy: { locationName: 'asc' },
+      });
+
+      // Para cada ubicación, obtener los usuarios asignados
+      const locationsWithUsers = await Promise.all(
+        locationNames.map(async (location) => {
+          const userLocations = await this.prisma.userLocation.findMany({
+            where: {
+              locationName: location.locationName,
+              isActive: true,
+            },
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  username: true,
+                  nombre: true,
+                  apellido: true,
+                  correo: true,
+                  role: true,
+                  isActive: true,
+                  lastLogin: true,
+                },
+              },
+            },
+            orderBy: {
+              assignedAt: 'desc',
+            },
+          });
+
+          // Obtener información general de la ubicación
+          const locationInfo = userLocations[0] || null;
+
+          return {
+            locationName: location.locationName,
+            locationCode: locationInfo?.locationCode || null,
+            description: locationInfo?.description || null,
+            isActive: true,
+            usersCount: userLocations.length,
+            users: userLocations.map((ul) => ({
+              id: ul.user.id,
+              username: ul.user.username,
+              nombre: ul.user.nombre,
+              apellido: ul.user.apellido,
+              correo: ul.user.correo,
+              role: ul.user.role,
+              isActive: ul.user.isActive,
+              lastLogin: ul.user.lastLogin,
+              assignedAt: ul.assignedAt,
+              assignedBy: ul.assignedBy,
+            })),
+            createdAt: locationInfo?.createdAt,
+            updatedAt: locationInfo?.updatedAt,
+          };
+        }),
+      );
+
+      // También obtener ubicaciones inactivas si existen
+      const inactiveLocationNames = await this.prisma.userLocation.findMany({
+        where: { isActive: false },
+        select: { locationName: true },
+        distinct: ['locationName'],
+        orderBy: { locationName: 'asc' },
+      });
+
+      const inactiveLocationsWithUsers = await Promise.all(
+        inactiveLocationNames.map(async (location) => {
+          const userLocations = await this.prisma.userLocation.findMany({
+            where: {
+              locationName: location.locationName,
+              isActive: false,
+            },
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  username: true,
+                  nombre: true,
+                  apellido: true,
+                  correo: true,
+                  role: true,
+                  isActive: true,
+                },
+              },
+            },
+            orderBy: {
+              assignedAt: 'desc',
+            },
+          });
+
+          const locationInfo = userLocations[0] || null;
+
+          return {
+            locationName: location.locationName,
+            locationCode: locationInfo?.locationCode || null,
+            description: locationInfo?.description || null,
+            isActive: false,
+            usersCount: userLocations.length,
+            users: userLocations.map((ul) => ({
+              id: ul.user.id,
+              username: ul.user.username,
+              nombre: ul.user.nombre,
+              apellido: ul.user.apellido,
+              correo: ul.user.correo,
+              role: ul.user.role,
+              isActive: ul.user.isActive,
+              assignedAt: ul.assignedAt,
+              assignedBy: ul.assignedBy,
+            })),
+            createdAt: locationInfo?.createdAt,
+            updatedAt: locationInfo?.updatedAt,
+          };
+        }),
+      );
+
+      // Combinar ubicaciones activas e inactivas
+      const allLocations = [...locationsWithUsers, ...inactiveLocationsWithUsers];
+
+      // Ordenar por estado (activas primero) y luego por nombre
+      return allLocations.sort((a, b) => {
+        if (a.isActive && !b.isActive) return -1;
+        if (!a.isActive && b.isActive) return 1;
+        return a.locationName.localeCompare(b.locationName);
+      });
+    } catch (error) {
+      this.logger.error(
+        `Error al obtener ubicaciones: ${(error as Error).message}`,
+        (error as Error).stack,
+      );
+      throw error;
+    }
   }
 }

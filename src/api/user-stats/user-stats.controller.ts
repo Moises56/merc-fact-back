@@ -124,6 +124,53 @@ export class UserStatsController {
     return this.userStatsService.assignUserLocation(data, req.user.id);
   }
 
+  @Get('locations')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.USER_ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Obtener todas las ubicaciones con usuarios asignados',
+    description: 'Solo para ADMIN y USER-ADMIN. Lista todas las ubicaciones del sistema con los usuarios asignados a cada una.',
+  })
+  @ApiResponse({
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          locationName: { type: 'string' },
+          locationCode: { type: 'string' },
+          description: { type: 'string' },
+          isActive: { type: 'boolean' },
+          usersCount: { type: 'number' },
+          users: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                username: { type: 'string' },
+                nombre: { type: 'string' },
+                apellido: { type: 'string' },
+                correo: { type: 'string' },
+                role: { type: 'string' },
+                isActive: { type: 'boolean' },
+                lastLogin: { type: 'string', format: 'date-time' },
+                assignedAt: { type: 'string', format: 'date-time' },
+                assignedBy: { type: 'string' },
+              },
+            },
+          },
+          createdAt: { type: 'string', format: 'date-time' },
+          updatedAt: { type: 'string', format: 'date-time' },
+        },
+      },
+    },
+  })
+  async getAllLocations(): Promise<any[]> {
+    return this.userStatsService.getAllLocations();
+  }
+
   @Get('my-stats')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({

@@ -99,21 +99,12 @@ export class UsersService {
         where,
         skip,
         take: limit,
-        select: {
-          id: true,
-          correo: true,
-          username: true,
-          nombre: true,
-          apellido: true,
-          telefono: true,
-          dni: true,
-          gerencia: true,
-          numero_empleado: true,
-          role: true,
-          isActive: true,
-          lastLogin: true,
-          createdAt: true,
-          updatedAt: true,
+        include: {
+          userLocations: {
+            where: { isActive: true },
+            select: { locationName: true },
+            take: 1,
+          },
         },
         orderBy: {
           createdAt: 'desc',
@@ -122,8 +113,27 @@ export class UsersService {
       this.prisma.user.count({ where }),
     ]);
 
+    // Mapear la respuesta para incluir ubicación y excluir campos sensibles
+    const mappedUsers = users.map((user) => ({
+      id: user.id,
+      correo: user.correo,
+      username: user.username,
+      nombre: user.nombre,
+      apellido: user.apellido,
+      telefono: user.telefono,
+      dni: user.dni,
+      gerencia: user.gerencia,
+      numero_empleado: user.numero_empleado,
+      role: user.role,
+      isActive: user.isActive,
+      lastLogin: user.lastLogin,
+      ubicacion: user.userLocations[0]?.locationName || user.ubicacion || null,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    }));
+
     return {
-      data: users,
+      data: mappedUsers,
       pagination: {
         current_page: page,
         total_pages: Math.ceil(total / limit),
