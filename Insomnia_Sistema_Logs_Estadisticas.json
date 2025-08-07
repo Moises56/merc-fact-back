@@ -1,0 +1,548 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2025-08-05T19:30:00.000Z",
+  "__export_source": "insomnia.desktop.app:v2023.5.8",
+  "resources": [
+    {
+      "_id": "req_001",
+      "parentId": "fld_auth",
+      "modified": 1691522000000,
+      "created": 1691522000000,
+      "url": "{{ _.baseUrl }}/api/auth/login",
+      "name": "1. Login ADMIN",
+      "description": "Login para usuario administrador con acceso completo",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"username\": \"admin\",\n  \"contrasena\": \"admin\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1691522000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_002",
+      "parentId": "fld_auth",
+      "modified": 1691522000000,
+      "created": 1691522000000,
+      "url": "{{ _.baseUrl }}/api/auth/login",
+      "name": "2. Login USER-ADMIN",
+      "description": "Login para usuario con acceso solo a consultas EC/ICS",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"username\": \"useradmin\",\n  \"contrasena\": \"admin123\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1691521000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_003",
+      "parentId": "fld_auth",
+      "modified": 1691522000000,
+      "created": 1691522000000,
+      "url": "{{ _.baseUrl }}/api/auth/login",
+      "name": "3. Login USER",
+      "description": "Login para usuario normal",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"username\": \"jperez\",\n  \"contrasena\": \"admin123\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1691520000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_101",
+      "parentId": "fld_consultas_ec",
+      "modified": 1691522000000,
+      "created": 1691522000000,
+      "url": "{{ _.baseUrl }}/consultaEC/auth",
+      "name": "EC - Consulta Normal (Con Logging)",
+      "description": "Consulta de Estado de Cuenta con logging automático",
+      "method": "GET",
+      "body": {},
+      "parameters": [
+        {
+          "id": "param_001",
+          "name": "claveCatastral",
+          "value": "23-0799-005",
+          "description": "Clave catastral real para pruebas"
+        },
+        {
+          "id": "param_002",
+          "name": "dni",
+          "value": "0101195401184",
+          "description": "DNI real para pruebas"
+        }
+      ],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": -1691522000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_102",
+      "parentId": "fld_consultas_ec",
+      "modified": 1691522000000,
+      "created": 1691522000000,
+      "url": "{{ _.baseUrl }}/consultaEC/auth/amnistia",
+      "name": "EC - Consulta Amnistía (Con Logging)",
+      "description": "Consulta de Estado de Cuenta con amnistía y logging automático",
+      "method": "GET",
+      "body": {},
+      "parameters": [
+        {
+          "id": "param_003",
+          "name": "claveCatastral",
+          "value": "23-0799-005",
+          "description": "Clave catastral real para pruebas"
+        },
+        {
+          "id": "param_004",
+          "name": "dni",
+          "value": "0101195401184",
+          "description": "DNI real para pruebas"
+        }
+      ],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": -1691521000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_201",
+      "parentId": "fld_consultas_ics",
+      "modified": 1691522000000,
+      "created": 1691522000000,
+      "url": "{{ _.baseUrl }}/consultaICS/auth",
+      "name": "ICS - Consulta Normal (Con Logging)",
+      "description": "Consulta de ICS con logging automático",
+      "method": "GET",
+      "body": {},
+      "parameters": [
+        {
+          "id": "param_005",
+          "name": "ics",
+          "value": "ICS-006454",
+          "description": "ICS real para pruebas"
+        },
+        {
+          "id": "param_006",
+          "name": "dni",
+          "value": "08019022363089",
+          "description": "DNI real para pruebas"
+        }
+      ],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": -1691522000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_202",
+      "parentId": "fld_consultas_ics",
+      "modified": 1691522000000,
+      "created": 1691522000000,
+      "url": "{{ _.baseUrl }}/consultaICS/auth/amnistia",
+      "name": "ICS - Consulta Amnistía (Con Logging)",
+      "description": "Consulta de ICS con amnistía y logging automático",
+      "method": "GET",
+      "body": {},
+      "parameters": [
+        {
+          "id": "param_007",
+          "name": "ics",
+          "value": "ICS-006454",
+          "description": "ICS real para pruebas"
+        },
+        {
+          "id": "param_008",
+          "name": "dni",
+          "value": "08019022363089",
+          "description": "DNI real para pruebas"
+        }
+      ],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": -1691521000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_301",
+      "parentId": "fld_stats",
+      "modified": 1691522000000,
+      "created": 1691522000000,
+      "url": "{{ _.baseUrl }}/api/user-stats/my-stats",
+      "name": "Mis Estadísticas",
+      "description": "Obtiene las estadísticas del usuario autenticado",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": -1691522000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_302",
+      "parentId": "fld_stats",
+      "modified": 1691522000000,
+      "created": 1691522000000,
+      "url": "{{ _.baseUrl }}/api/user-stats/general",
+      "name": "Estadísticas Generales (ADMIN)",
+      "description": "Estadísticas generales del sistema - Solo ADMIN",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": -1691521000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_303",
+      "parentId": "fld_stats",
+      "modified": 1691522000000,
+      "created": 1691522000000,
+      "url": "{{ _.baseUrl }}/api/user-stats/user/e25711ea-1605-471e-8e05-798774f5c10d",
+      "name": "Estadísticas de Usuario Específico (ADMIN)",
+      "description": "Estadísticas de un usuario específico - Solo ADMIN",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": -1691520000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_304",
+      "parentId": "fld_stats",
+      "modified": 1691522000000,
+      "created": 1691522000000,
+      "url": "{{ _.baseUrl }}/api/user-stats/location/Oficina Central",
+      "name": "Estadísticas por Ubicación (ADMIN)",
+      "description": "Estadísticas filtradas por ubicación - Solo ADMIN",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": -1691519000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_401",
+      "parentId": "fld_logs",
+      "modified": 1691522000000,
+      "created": 1691522000000,
+      "url": "{{ _.baseUrl }}/api/user-stats/logs",
+      "name": "Logs de Consultas (ADMIN)",
+      "description": "Todos los logs de consultas - Solo ADMIN",
+      "method": "GET",
+      "body": {},
+      "parameters": [
+        {
+          "id": "param_009",
+          "name": "page",
+          "value": "1",
+          "description": "Página (opcional)"
+        },
+        {
+          "id": "param_010",
+          "name": "limit",
+          "value": "10",
+          "description": "Límite por página (opcional)"
+        },
+        {
+          "id": "param_011",
+          "name": "consultaType",
+          "value": "",
+          "description": "Filtrar por tipo: EC o ICS (opcional)",
+          "disabled": true
+        },
+        {
+          "id": "param_012",
+          "name": "resultado",
+          "value": "",
+          "description": "Filtrar por resultado: SUCCESS, ERROR, NOT_FOUND (opcional)",
+          "disabled": true
+        }
+      ],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": -1691522000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_501",
+      "parentId": "fld_locations",
+      "modified": 1691522000000,
+      "created": 1691522000000,
+      "url": "{{ _.baseUrl }}/api/user-stats/user-location",
+      "name": "Asignar Ubicación a Usuario",
+      "description": "Asigna una ubicación específica al usuario",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"locationName\": \"Oficina Central\",\n  \"description\": \"Oficina principal en el centro de la ciudad\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1691522000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_502",
+      "parentId": "fld_locations",
+      "modified": 1691522000000,
+      "created": 1691522000000,
+      "url": "{{ _.baseUrl }}/api/user-stats/log",
+      "name": "Crear Log Manual",
+      "description": "Crea un log de consulta manualmente (para testing)",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"consultaType\": \"EC\",\n  \"consultaSubtype\": \"NORMAL\",\n  \"parametros\": \"{\\\"claveCatastral\\\":\\\"12345\\\",\\\"dni\\\":\\\"0801123456789\\\"}\",\n  \"resultado\": \"SUCCESS\",\n  \"totalEncontrado\": 1500.50,\n  \"duracionMs\": 1200\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1691521000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "fld_auth",
+      "parentId": "wrk_001",
+      "modified": 1691522000000,
+      "created": 1691522000000,
+      "name": "🔐 Autenticación",
+      "description": "Endpoints de login para diferentes tipos de usuario",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1691522000000,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_consultas_ec",
+      "parentId": "wrk_001",
+      "modified": 1691522000000,
+      "created": 1691522000000,
+      "name": "📋 Consultas EC (Con Logging)",
+      "description": "Consultas de Estado de Cuenta con logging automático",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1691521000000,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_consultas_ics",
+      "parentId": "wrk_001",
+      "modified": 1691522000000,
+      "created": 1691522000000,
+      "name": "🏢 Consultas ICS (Con Logging)",
+      "description": "Consultas de ICS con logging automático",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1691520000000,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_stats",
+      "parentId": "wrk_001",
+      "modified": 1691522000000,
+      "created": 1691522000000,
+      "name": "📊 Estadísticas",
+      "description": "Endpoints de estadísticas y métricas",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1691519000000,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_logs",
+      "parentId": "wrk_001",
+      "modified": 1691522000000,
+      "created": 1691522000000,
+      "name": "📝 Logs de Consultas",
+      "description": "Gestión y consulta de logs",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1691518000000,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_locations",
+      "parentId": "wrk_001",
+      "modified": 1691522000000,
+      "created": 1691522000000,
+      "name": "📍 Ubicaciones y Logs Manuales",
+      "description": "Gestión de ubicaciones y creación manual de logs",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1691517000000,
+      "_type": "request_group"
+    },
+    {
+      "_id": "wrk_001",
+      "parentId": null,
+      "modified": 1691522000000,
+      "created": 1691522000000,
+      "name": "Sistema de Logs y Estadísticas - MER-FACT",
+      "description": "Colección completa para probar el sistema de logs y estadísticas de usuarios",
+      "scope": "collection",
+      "_type": "workspace"
+    },
+    {
+      "_id": "env_001",
+      "parentId": "wrk_001",
+      "modified": 1691522000000,
+      "created": 1691522000000,
+      "name": "Base Environment",
+      "data": {
+        "baseUrl": "http://localhost:3000"
+      },
+      "dataPropertyOrder": {
+        "&": ["baseUrl"]
+      },
+      "color": null,
+      "isPrivate": false,
+      "metaSortKey": 1691522000000,
+      "_type": "environment"
+    }
+  ]
+}

@@ -19,6 +19,7 @@ import { PerformanceInterceptor } from './common/interceptors/performance.interc
 import { ConsultaEcModule } from './consulta-ec/consulta-ec.module';
 import { ConsultaIcsModule } from './consulta-ics/consulta-ics.module';
 import { HealthModule } from './api/health/health.module';
+import { UserStatsModule } from './api/user-stats/user-stats.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { HealthModule } from './api/health/health.module';
     ConsultaEcModule,
     ConsultaIcsModule,
     HealthModule,
+    UserStatsModule,
   ],
   controllers: [AppController],
   providers: [

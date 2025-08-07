@@ -3,4 +3,5 @@ export enum Role {
   ADMIN = 'ADMIN',
   MARKET = 'MARKET',
   AUDITOR = 'AUDITOR',
+  USER_ADMIN = 'USER-ADMIN',
 }

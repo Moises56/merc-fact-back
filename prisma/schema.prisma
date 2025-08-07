@@ -27,14 +27,17 @@ model User {
   dni             String   @unique
   gerencia        String?
   numero_empleado Int?     @unique
-  role            String   @default("USER") // USER, ADMIN, MARKET
+  role            String   @default("USER") // USER, ADMIN, MARKET, USER-ADMIN
   isActive        Boolean  @default(true)
   lastLogin       DateTime?
+  ubicacion       String?  // Ubicación asignada al usuario (ej: "Mall Multiplaza")
   
   // Relaciones
   createdFacturas Factura[] @relation("FacturaCreador")
   facturasAnuladas Factura[] @relation("FacturaAnulada")
   auditLogs       AuditLog[]
+  consultaLogs    ConsultaLog[]
+  userLocations   UserLocation[]
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -144,4 +147,47 @@ model AuditLog {
   createdAt   DateTime @default(now())
   
   @@map("audit_logs")
+}
+
+model ConsultaLog {
+  id              String   @id @default(uuid())
+  consultaType    String   // EC, ICS
+  consultaSubtype String   // normal, amnistia
+  parametros      String   // JSON con parámetros de consulta (ics, dni, identidad, etc.)
+  resultado       String?  // SUCCESS, ERROR, NOT_FOUND
+  totalEncontrado Decimal? @db.Decimal(15, 2) // Total del resultado si fue exitoso
+  errorMessage    String?  // Mensaje de error si falló
+  ip              String?
+  userAgent       String?
+  duracionMs      Int?     // Duración de la consulta en milisegundos
+  
+  // Relaciones
+  userId          String
+  user            User @relation(fields: [userId], references: [id])
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([userId, consultaType])
+  @@index([createdAt])
+  @@map("consulta_logs")
+}
+
+model UserLocation {
+  id           String   @id @default(uuid())
+  locationName String   // "Mall Multiplaza", "Centro Histórico", etc.
+  locationCode String?  // "MULT_001", "CENTRO_001", etc.
+  description  String?
+  isActive     Boolean  @default(true)
+  assignedAt   DateTime @default(now())
+  assignedBy   String?  // ID del usuario que asignó la ubicación
+  
+  // Relaciones
+  userId       String
+  user         User @relation(fields: [userId], references: [id])
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@unique([userId, isActive]) // Solo una ubicación activa por usuario
+  @@map("user_locations")
 }
