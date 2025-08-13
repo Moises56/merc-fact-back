@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -183,8 +184,36 @@ export class UsersService {
     });
   }
 
-  async update(id: string, updateUserDto: UpdateUserDto) {
+  async update(id: string, updateUserDto: UpdateUserDto, currentUser?: any) {
     await this.findOne(id);
+
+    // Verificar permisos: Solo ADMIN puede actualizar cualquier usuario
+    // Los usuarios regulares solo pueden actualizar sus propios datos
+    if (currentUser) {
+      const isAdmin = currentUser.role === 'ADMIN';
+      const isOwnProfile = currentUser.id === id;
+      
+      if (!isAdmin && !isOwnProfile) {
+        throw new ForbiddenException(
+          'No tienes permisos para actualizar este usuario',
+        );
+      }
+
+      // Si no es ADMIN, restringir qué campos puede actualizar
+      if (!isAdmin) {
+        // Los usuarios regulares no pueden cambiar ciertos campos críticos
+        const restrictedFields = ['role', 'isActive', 'numero_empleado'];
+        const hasRestrictedFields = restrictedFields.some((field) =>
+          Object.prototype.hasOwnProperty.call(updateUserDto, field),
+        );
+        
+        if (hasRestrictedFields) {
+          throw new ForbiddenException(
+            'No tienes permisos para actualizar estos campos',
+          );
+        }
+      }
+    }
 
     // Check for conflicts if email, username, DNI, or numero_empleado is being updated
     if (

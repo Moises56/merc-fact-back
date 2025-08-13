@@ -103,6 +103,59 @@ export class UsersController {
     return this.usersService.getUserStats();
   }
 
+  @Get('me')
+  @ApiOperation({ summary: 'Obtener mi perfil' })
+  @ApiResponse({
+    status: 200,
+    description: 'Perfil obtenido exitosamente',
+  })
+  getMyProfile(@GetUser() currentUser: User) {
+    return this.usersService.findOne(currentUser.id);
+  }
+
+  @Patch('me')
+  @AuditLog({ action: 'UPDATE_PROFILE', table: 'users' })
+  @ApiOperation({
+    summary: 'Actualizar mi perfil',
+    description:
+      'Permite al usuario actualizar sus propios datos (excluyendo campos administrativos)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Perfil actualizado exitosamente',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'El correo o nombre de usuario ya existe',
+  })
+  updateMyProfile(
+    @Body() updateUserDto: UpdateUserDto,
+    @GetUser() currentUser: User,
+  ) {
+    // Filtrar campos que los usuarios normales no pueden actualizar
+    const allowedFields = [
+      'nombre',
+      'apellido',
+      'telefono',
+      'correo',
+      'username',
+      'contrasena',
+    ];
+    const filteredDto: Partial<UpdateUserDto> = {};
+
+    allowedFields.forEach((field) => {
+      if (updateUserDto[field] !== undefined) {
+        filteredDto[field] = updateUserDto[field];
+      }
+    });
+
+    return this.usersService.update(
+      currentUser.id,
+      filteredDto as UpdateUserDto,
+      currentUser,
+    );
+  }
+
   @Get(':id')
   @Roles(Role.ADMIN, Role.MARKET)
   @AuditLog({ action: 'VIEW', table: 'users' })
@@ -120,9 +173,12 @@ export class UsersController {
   }
 
   @Patch(':id')
-  @Roles(Role.ADMIN)
   @AuditLog({ action: 'UPDATE', table: 'users' })
-  @ApiOperation({ summary: 'Actualizar usuario' })
+  @ApiOperation({
+    summary: 'Actualizar usuario',
+    description:
+      'Los ADMIN pueden actualizar cualquier usuario. Los usuarios pueden actualizar sus propios datos.',
+  })
   @ApiResponse({
     status: 200,
     description: 'Usuario actualizado exitosamente',
@@ -132,11 +188,19 @@ export class UsersController {
     description: 'Usuario no encontrado',
   })
   @ApiResponse({
+    status: 403,
+    description: 'No tienes permisos para actualizar este usuario',
+  })
+  @ApiResponse({
     status: 409,
     description: 'El correo o DNI ya existe',
   })
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.usersService.update(id, updateUserDto);
+  update(
+    @Param('id') id: string,
+    @Body() updateUserDto: UpdateUserDto,
+    @GetUser() currentUser: User,
+  ) {
+    return this.usersService.update(id, updateUserDto, currentUser);
   }
 
   @Delete(':id')
@@ -176,7 +240,8 @@ export class UsersController {
   @AuditLog({ action: 'RESET_PASSWORD', table: 'users' })
   @ApiOperation({
     summary: 'Restablecer contraseña de usuario',
-    description: 'Solo administradores pueden restablecer contraseñas de otros usuarios',
+    description:
+      'Solo administradores pueden restablecer contraseñas de otros usuarios',
   })
   @ApiResponse({
     status: 200,
