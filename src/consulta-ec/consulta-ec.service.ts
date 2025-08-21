@@ -132,9 +132,9 @@ export class ConsultaEcService {
         SUM(VALOR)
         FOR TIPO IN ([Impuesto], [Tren de Aseo], [Tasa Bomberos])
       ) AS PVT
-      WHERE [Impuesto] IS NOT NULL 
-        AND [Tren de Aseo] IS NOT NULL 
-        AND [Tasa Bomberos] IS NOT NULL
+      WHERE NOT ([Impuesto] IS NULL 
+        AND [Tren de Aseo] IS NULL 
+        AND [Tasa Bomberos] IS NULL)
       ORDER BY ART_ID_DOC, OBL_YEAR
     `;
   }
