@@ -23,6 +23,7 @@ async function bootstrap() {
     ? process.env.FRONTEND_URL.split(',').map((origin) => origin.trim())
     : [
         'http://localhost:4200',
+        'https://facturas.amdc.hn',
         'https://fact-amdc.netlify.app',
         'http://localhost:8100',
       ];
