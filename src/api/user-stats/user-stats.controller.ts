@@ -10,7 +10,12 @@ import {
   HttpStatus,
   Req,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -49,7 +54,9 @@ export class UserStatsController {
     description: 'Solo para ADMIN y USER-ADMIN',
   })
   @ApiResponse({ type: GeneralStatsResponseDto })
-  async getGeneralStats(@Query() filters: GetUserStatsDto): Promise<GeneralStatsResponseDto> {
+  async getGeneralStats(
+    @Query() filters: GetUserStatsDto,
+  ): Promise<GeneralStatsResponseDto> {
     return this.userStatsService.getGeneralStats(filters);
   }
 
@@ -97,7 +104,10 @@ export class UserStatsController {
     schema: {
       type: 'object',
       properties: {
-        logs: { type: 'array', items: { $ref: '#/components/schemas/ConsultaLogResponseDto' } },
+        logs: {
+          type: 'array',
+          items: { $ref: '#/components/schemas/ConsultaLogResponseDto' },
+        },
         total: { type: 'number' },
       },
     },
@@ -130,7 +140,8 @@ export class UserStatsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Obtener todas las ubicaciones con usuarios asignados',
-    description: 'Solo para ADMIN y USER-ADMIN. Lista todas las ubicaciones del sistema con los usuarios asignados a cada una.',
+    description:
+      'Solo para ADMIN y USER-ADMIN. Lista todas las ubicaciones del sistema con los usuarios asignados a cada una.',
   })
   @ApiResponse({
     schema: {
@@ -175,7 +186,8 @@ export class UserStatsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Obtener mis propias estadísticas',
-    description: 'Cualquier usuario autenticado puede ver sus propias estadísticas',
+    description:
+      'Cualquier usuario autenticado puede ver sus propias estadísticas',
   })
   @ApiResponse({ type: UserStatsResponseDto })
   async getMyStats(
@@ -193,7 +205,9 @@ export class UserStatsController {
     description: 'Endpoint interno para registrar logs de consultas EC/ICS',
   })
   @ApiResponse({ type: ConsultaLogResponseDto })
-  async logConsulta(@Body() data: CreateConsultaLogDto): Promise<ConsultaLogResponseDto> {
+  async logConsulta(
+    @Body() data: CreateConsultaLogDto,
+  ): Promise<ConsultaLogResponseDto> {
     return this.userStatsService.logConsulta(data);
   }
 }

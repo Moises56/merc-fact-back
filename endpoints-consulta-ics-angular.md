@@ -1,10 +1,5 @@
 # 📋 Endpoints de Consulta ICS para Angular
 
-## 🔗 Base URL
-```typescript
-const BASE_URL = 'http://localhost:3000';
-```
-
 ## 📍 Endpoints Disponibles
 
 ### 1. Consulta ICS Normal
@@ -156,6 +151,50 @@ interface PropiedadICS {
   "amnistiaVigente": true,
   "fechaFinAmnistia": "30/09/2025",
   "tipoConsulta": "dni_rtn",
+  "ubicacionConsulta": "Sistema ICS"
+}
+```json
+{
+  "nombre": "INVERSIONES JAS, S.A.",
+  "identidad": "08019022363089",
+  "fecha": "01/08/2025",
+  "hora": "02:52:27 p. m.",
+  "empresas": [
+    {
+      "numeroEmpresa": "ICS-006454",
+      "mes": "Industria y Comercio 2022-4",
+      "detallesMora": [
+        {
+          "year": "2024",
+          "impuesto": "L 4,200.00",
+          "trenDeAseo": "L 7,968.00",
+          "tasaBomberos": "L 1,920.00",
+          "otros": "L 9,009.12",
+          "recargo": "L 1,370.96",
+          "total": "L 24,468.08",
+          "dias": 240,
+          "impuestoNumerico": 4200,
+          "trenDeAseoNumerico": 7968,
+          "tasaBomberosNumerico": 1920,
+          "otrosNumerico": 9009.12,
+          "recargoNumerico": 1370.96,
+          "totalNumerico": 24468.08,
+          "amnistiaAplicada": true
+        }
+      ],
+      "totalPropiedad": "L 60,477.08",
+      "totalPropiedadNumerico": 60477.08
+    }
+  ],
+  "totalGeneral": "L 60,477.08",
+  "totalGeneralNumerico": 60477.08,
+  "descuentoProntoPago": "L 137.40",
+  "descuentoProntoPagoNumerico": 137.4,
+  "totalAPagar": "L 60,339.68",
+  "totalAPagarNumerico": 60339.68,
+  "amnistiaVigente": true,
+  "fechaFinAmnistia": "30/09/2025",
+  "tipoConsulta": "ics",
   "ubicacionConsulta": "Sistema ICS"
 }
 ```
