@@ -28,6 +28,8 @@ import {
 import {
   AssignUserLocationDto,
   UserLocationResponseDto,
+  UserLocationHistoryResponseDto,
+  GetUserLocationHistoryDto,
 } from './dto/user-location.dto';
 import {
   GetUserStatsDto,
@@ -132,6 +134,70 @@ export class UserStatsController {
     @Req() req: any,
   ): Promise<UserLocationResponseDto> {
     return this.userStatsService.assignUserLocation(data, req.user.id);
+  }
+
+  @Get('user/:userId/location-history')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.USER_ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Obtener historial completo de ubicaciones de un usuario',
+    description:
+      'Retorna el historial completo de ubicaciones asignadas a un usuario específico, incluyendo ubicaciones activas e inactivas con información de duración y fechas de cambio.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Historial de ubicaciones obtenido exitosamente',
+    type: UserLocationHistoryResponseDto,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Usuario no encontrado',
+  })
+  async getUserLocationHistory(
+    @Param('userId') userId: string,
+    @Query('activeOnly') activeOnly?: boolean,
+    @Query('sortOrder') sortOrder?: 'asc' | 'desc',
+    @Query('limit') limit?: number,
+    @Query('page') page?: number,
+  ): Promise<UserLocationHistoryResponseDto> {
+    const options: GetUserLocationHistoryDto = {
+      activeOnly,
+      sortOrder,
+      limit,
+      page,
+    };
+    return this.userStatsService.getUserLocationHistory(userId, options);
+  }
+
+  @Get('users/location-history')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.USER_ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Obtener historial de ubicaciones de todos los usuarios',
+    description:
+      'Retorna el historial de ubicaciones de todos los usuarios del sistema con paginación y filtros.',
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Historial de ubicaciones de todos los usuarios obtenido exitosamente',
+    type: [UserLocationHistoryResponseDto],
+  })
+  async getAllUsersLocationHistory(
+    @Query('activeOnly') activeOnly?: boolean,
+    @Query('sortOrder') sortOrder?: 'asc' | 'desc',
+    @Query('limit') limit?: number,
+    @Query('page') page?: number,
+  ): Promise<UserLocationHistoryResponseDto[]> {
+    const options: GetUserLocationHistoryDto = {
+      activeOnly,
+      sortOrder,
+      limit,
+      page,
+    };
+    return this.userStatsService.getAllUsersLocationHistory(options);
   }
 
   @Get('locations')

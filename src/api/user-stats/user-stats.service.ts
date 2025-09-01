@@ -10,6 +10,9 @@ import {
 import {
   AssignUserLocationDto,
   UserLocationResponseDto,
+  UserLocationHistoryResponseDto,
+  UserLocationHistoryItemDto,
+  GetUserLocationHistoryDto,
 } from './dto/user-location.dto';
 import {
   GetUserStatsDto,
@@ -86,33 +89,80 @@ export class UserStatsService {
     assignedByUserId: string,
   ): Promise<UserLocationResponseDto> {
     try {
-      // Desactivar ubicación anterior si existe
-      await this.prisma.userLocation.updateMany({
+      // Verificar que el usuario existe
+      const user = await this.prisma.user.findUnique({
+        where: { id: data.userId },
+        select: {
+          id: true,
+          username: true,
+          nombre: true,
+          apellido: true,
+        },
+      });
+
+      if (!user) {
+        throw new Error('Usuario no encontrado');
+      }
+
+      // Obtener la ubicación actual antes de cambiarla (para logging)
+      const currentLocation = await this.prisma.userLocation.findFirst({
         where: {
           userId: data.userId,
           isActive: true,
         },
-        data: {
-          isActive: false,
-        },
       });
 
-      // Crear nueva ubicación
-      const location = await this.prisma.userLocation.create({
-        data: {
-          userId: data.userId,
-          locationName: data.locationName,
-          locationCode: data.locationCode,
-          description: data.description,
-          assignedBy: assignedByUserId,
-          isActive: true,
-        },
-        include: {
-          user: {
-            select: { username: true },
+      const assignmentDate = new Date();
+
+      // Usar transacción para garantizar consistencia
+      const location = await this.prisma.$transaction(async (prisma) => {
+        // Desactivar ubicación anterior si existe
+        if (currentLocation) {
+          await prisma.userLocation.update({
+            where: {
+              id: currentLocation.id,
+            },
+            data: {
+              isActive: false,
+              updatedAt: assignmentDate,
+            },
+          });
+
+          this.logger.log(
+            `Ubicación anterior desactivada para usuario ${user.username} (${data.userId}): ${currentLocation.locationName} -> ${data.locationName}`,
+          );
+        }
+
+        // Crear nueva ubicación
+        const newLocation = await prisma.userLocation.create({
+          data: {
+            userId: data.userId,
+            locationName: data.locationName,
+            locationCode: data.locationCode,
+            description: data.description,
+            assignedBy: assignedByUserId,
+            isActive: true,
+            assignedAt: assignmentDate,
           },
-        },
+          include: {
+            user: {
+              select: { username: true },
+            },
+          },
+        });
+
+        return newLocation;
       });
+
+      // Log del cambio exitoso
+      this.logger.log(
+        `Nueva ubicación asignada exitosamente - Usuario: ${user.username} (${data.userId}), Ubicación: ${data.locationName} (${data.locationCode || 'Sin código'}), Asignado por: ${assignedByUserId}`,
+      );
+
+      // Log para auditoría del historial
+      this.logger.log(
+        `HISTORIAL_UBICACION: {"userId":"${data.userId}","username":"${user.username}","previousLocation":"${currentLocation?.locationName || 'Ninguna'}","newLocation":"${data.locationName}","assignedBy":"${assignedByUserId}","timestamp":"${assignmentDate.toISOString()}"}`,
+      );
 
       return {
         id: location.id,
@@ -129,7 +179,195 @@ export class UserStatsService {
       };
     } catch (error) {
       this.logger.error(
-        `Error al asignar ubicación: ${error.message}`,
+        `Error al asignar ubicación - Usuario: ${data.userId}, Ubicación: ${data.locationName}, Error: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
+  // Obtener historial de ubicaciones de un usuario
+  async getUserLocationHistory(
+    userId: string,
+    options?: GetUserLocationHistoryDto,
+  ): Promise<UserLocationHistoryResponseDto> {
+    try {
+      // Verificar que el usuario existe
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          username: true,
+          nombre: true,
+          apellido: true,
+        },
+      });
+
+      if (!user) {
+        throw new Error('Usuario no encontrado');
+      }
+
+      const {
+        activeOnly = false,
+        sortOrder = 'desc',
+        limit = 50,
+        page = 1,
+      } = options || {};
+      const skip = (page - 1) * limit;
+
+      // Construir filtros
+      const whereClause: any = { userId };
+      if (activeOnly) {
+        whereClause.isActive = true;
+      }
+
+      // Obtener ubicaciones del usuario
+      const userLocations = await this.prisma.userLocation.findMany({
+        where: whereClause,
+        orderBy: {
+          assignedAt: sortOrder,
+        },
+        skip,
+        take: limit,
+      });
+
+      // Obtener información adicional para calcular duraciones
+      const allUserLocations = await this.prisma.userLocation.findMany({
+        where: { userId },
+        orderBy: { assignedAt: 'asc' },
+      });
+
+      // Procesar ubicaciones para calcular duraciones
+      const locationHistory: UserLocationHistoryItemDto[] = userLocations.map(
+        (location) => {
+          let durationDays: number | undefined;
+          let deactivatedAt: Date | undefined;
+
+          if (!location.isActive) {
+            // Buscar la siguiente ubicación para calcular duración
+            const currentIndex = allUserLocations.findIndex(
+              (loc) => loc.id === location.id,
+            );
+            if (
+              currentIndex !== -1 &&
+              currentIndex < allUserLocations.length - 1
+            ) {
+              const nextLocation = allUserLocations[currentIndex + 1];
+              deactivatedAt = nextLocation.assignedAt;
+              durationDays = Math.ceil(
+                (nextLocation.assignedAt.getTime() -
+                  location.assignedAt.getTime()) /
+                  (1000 * 60 * 60 * 24),
+              );
+            }
+          } else {
+            // Para ubicación activa, calcular días desde asignación
+            durationDays = Math.ceil(
+              (new Date().getTime() - location.assignedAt.getTime()) /
+                (1000 * 60 * 60 * 24),
+            );
+          }
+
+          return {
+            id: location.id,
+            locationName: location.locationName,
+            locationCode: location.locationCode ?? undefined,
+            description: location.description ?? undefined,
+            isActive: location.isActive,
+            assignedAt: location.assignedAt,
+            assignedBy: location.assignedBy ?? undefined,
+            assignedByUsername: location.assignedBy ?? undefined, // TODO: Obtener username real del assignedBy
+            createdAt: location.createdAt,
+            updatedAt: location.updatedAt,
+            durationDays,
+            deactivatedAt,
+          };
+        },
+      );
+
+      // Obtener ubicación actual
+      const currentLocation = locationHistory.find((loc) => loc.isActive);
+
+      // Calcular estadísticas
+      const totalLocations = await this.prisma.userLocation.count({
+        where: { userId },
+      });
+
+      const firstLocation = allUserLocations[0];
+      const lastLocation = allUserLocations[allUserLocations.length - 1];
+
+      return {
+        userId: user.id,
+        username: user.username,
+        nombre: user.nombre,
+        apellido: user.apellido,
+        currentLocation,
+        locationHistory,
+        totalLocations,
+        firstAssignedAt: firstLocation?.assignedAt,
+        lastAssignedAt: lastLocation?.assignedAt,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error al obtener historial de ubicaciones: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
+  // Obtener historial de ubicaciones de todos los usuarios
+  async getAllUsersLocationHistory(
+    options?: GetUserLocationHistoryDto,
+  ): Promise<UserLocationHistoryResponseDto[]> {
+    try {
+      const {
+        activeOnly = false,
+        sortOrder = 'desc',
+        limit = 50,
+        page = 1,
+      } = options || {};
+      const skip = (page - 1) * limit;
+
+      // Obtener usuarios con ubicaciones
+      const usersWithLocations = await this.prisma.user.findMany({
+        where: {
+          userLocations: {
+            some: activeOnly ? { isActive: true } : {},
+          },
+        },
+        select: {
+          id: true,
+          username: true,
+          nombre: true,
+          apellido: true,
+        },
+        skip,
+        take: limit,
+      });
+
+      // Obtener historial para cada usuario
+      const results: UserLocationHistoryResponseDto[] = [];
+      for (const user of usersWithLocations) {
+        try {
+          const userHistory = await this.getUserLocationHistory(user.id, {
+            activeOnly,
+            sortOrder,
+          });
+          results.push(userHistory);
+        } catch (error) {
+          // Continuar con el siguiente usuario si hay error
+          this.logger.warn(
+            `Error obteniendo historial para usuario ${user.id}:`,
+            error,
+          );
+        }
+      }
+
+      return results;
+    } catch (error) {
+      this.logger.error(
+        `Error al obtener historial de ubicaciones de todos los usuarios: ${error.message}`,
         error.stack,
       );
       throw error;
@@ -276,24 +514,43 @@ export class UserStatsService {
       for (const usuario of usuarios) {
         const logs = usuario.consultaLogs;
         const totalConsultasUser = logs.length;
-        const consultasECUser = logs.filter(l => l.consultaType === 'EC').length;
-        const consultasICSUser = logs.filter(l => l.consultaType === 'ICS').length;
-        const consultasExitosas = logs.filter(l => l.resultado === 'SUCCESS').length;
-        const consultasConError = logs.filter(l => l.resultado === 'ERROR').length;
-        const consultasNoEncontradas = logs.filter(l => l.resultado === 'NOT_FOUND').length;
-        
-        const tiemposRespuesta = logs.filter(l => l.duracionMs !== null).map(l => l.duracionMs!);
-        const promedioTiempoRespuesta = tiemposRespuesta.length > 0 
-          ? tiemposRespuesta.reduce((a, b) => a + b, 0) / tiemposRespuesta.length 
-          : 0;
-        
+        const consultasECUser = logs.filter(
+          (l) => l.consultaType === 'EC',
+        ).length;
+        const consultasICSUser = logs.filter(
+          (l) => l.consultaType === 'ICS',
+        ).length;
+        const consultasExitosas = logs.filter(
+          (l) => l.resultado === 'SUCCESS',
+        ).length;
+        const consultasConError = logs.filter(
+          (l) => l.resultado === 'ERROR',
+        ).length;
+        const consultasNoEncontradas = logs.filter(
+          (l) => l.resultado === 'NOT_FOUND',
+        ).length;
+
+        const tiemposRespuesta = logs
+          .filter((l) => l.duracionMs !== null)
+          .map((l) => l.duracionMs!);
+        const promedioTiempoRespuesta =
+          tiemposRespuesta.length > 0
+            ? tiemposRespuesta.reduce((a, b) => a + b, 0) /
+              tiemposRespuesta.length
+            : 0;
+
         const totalRecaudado = logs
-          .filter(l => l.resultado === 'SUCCESS' && l.totalEncontrado)
+          .filter((l) => l.resultado === 'SUCCESS' && l.totalEncontrado)
           .reduce((sum, l) => sum + (l.totalEncontrado?.toNumber() || 0), 0);
-        
-        const ultimaConsulta = logs.length > 0 
-          ? logs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0].createdAt
-          : undefined;
+
+        const ultimaConsulta =
+          logs.length > 0
+            ? logs.sort(
+                (a, b) =>
+                  new Date(b.createdAt).getTime() -
+                  new Date(a.createdAt).getTime(),
+              )[0].createdAt
+            : undefined;
 
         usuariosStats.push({
           userId: usuario.id,
@@ -343,98 +600,104 @@ export class UserStatsService {
       const dateRange = this.getDateRange(filters);
 
       // Optimized: Single query to get all necessary data
-      const [totalUsuarios, consultaStats, locationStats, topUsersData] = await Promise.all([
-        // Total users count
-        this.prisma.user.count({
-          where: { role: 'USER' },
-        }),
-        
-        // Aggregated consultation stats
-        this.prisma.consultaLog.groupBy({
-          by: ['consultaType', 'resultado'],
-          where: {
-            createdAt: {
-              gte: dateRange.start,
-              lte: dateRange.end,
+      const [totalUsuarios, consultaStats, locationStats, topUsersData] =
+        await Promise.all([
+          // Total users count
+          this.prisma.user.count({
+            where: { role: 'USER' },
+          }),
+
+          // Aggregated consultation stats
+          this.prisma.consultaLog.groupBy({
+            by: ['consultaType', 'resultado'],
+            where: {
+              createdAt: {
+                gte: dateRange.start,
+                lte: dateRange.end,
+              },
             },
-          },
-          _count: {
-            id: true,
-          },
-        }),
-        
-        // Location stats with user data in single query
-        this.prisma.userLocation.findMany({
-          where: { isActive: true },
-          select: {
-            locationName: true,
-            user: {
-              select: {
-                id: true,
-                username: true,
-                consultaLogs: {
-                  where: {
-                    createdAt: {
-                      gte: dateRange.start,
-                      lte: dateRange.end,
+            _count: {
+              id: true,
+            },
+          }),
+
+          // Location stats with user data in single query
+          this.prisma.userLocation.findMany({
+            where: { isActive: true },
+            select: {
+              locationName: true,
+              user: {
+                select: {
+                  id: true,
+                  username: true,
+                  consultaLogs: {
+                    where: {
+                      createdAt: {
+                        gte: dateRange.start,
+                        lte: dateRange.end,
+                      },
                     },
-                  },
-                  select: {
-                    consultaType: true,
-                    resultado: true,
-                    duracionMs: true,
-                    totalEncontrado: true,
-                    createdAt: true,
+                    select: {
+                      consultaType: true,
+                      resultado: true,
+                      duracionMs: true,
+                      totalEncontrado: true,
+                      createdAt: true,
+                    },
                   },
                 },
               },
             },
-          },
-        }),
-        
-        // Top users data
-        this.prisma.consultaLog.groupBy({
-          by: ['userId'],
-          where: {
-            createdAt: {
-              gte: dateRange.start,
-              lte: dateRange.end,
+          }),
+
+          // Top users data
+          this.prisma.consultaLog.groupBy({
+            by: ['userId'],
+            where: {
+              createdAt: {
+                gte: dateRange.start,
+                lte: dateRange.end,
+              },
             },
-          },
-          _count: {
-            id: true,
-          },
-          orderBy: {
             _count: {
-              id: 'desc',
+              id: true,
             },
-          },
-          take: 10,
-        }),
-      ]);
+            orderBy: {
+              _count: {
+                id: 'desc',
+              },
+            },
+            take: 10,
+          }),
+        ]);
 
       // Process consultation stats
       let totalConsultas = 0;
       let usuariosActivosSet = new Set<string>();
       const consultasPorTipo = { EC: 0, ICS: 0 };
       const consultasPorResultado = { SUCCESS: 0, ERROR: 0, NOT_FOUND: 0 };
-      
-      consultaStats.forEach(stat => {
+
+      consultaStats.forEach((stat) => {
         totalConsultas += stat._count.id;
         consultasPorTipo[stat.consultaType as 'EC' | 'ICS'] += stat._count.id;
-        consultasPorResultado[stat.resultado as 'SUCCESS' | 'ERROR' | 'NOT_FOUND'] += stat._count.id;
+        consultasPorResultado[
+          stat.resultado as 'SUCCESS' | 'ERROR' | 'NOT_FOUND'
+        ] += stat._count.id;
       });
 
       // Process location stats efficiently
-      const locationMap = new Map<string, {
-        users: Array<{
-          id: string;
-          username: string;
-          logs: any[];
-        }>;
-      }>();
+      const locationMap = new Map<
+        string,
+        {
+          users: Array<{
+            id: string;
+            username: string;
+            logs: any[];
+          }>;
+        }
+      >();
 
-      locationStats.forEach(loc => {
+      locationStats.forEach((loc) => {
         if (!locationMap.has(loc.locationName)) {
           locationMap.set(loc.locationName, { users: [] });
         }
@@ -443,7 +706,7 @@ export class UserStatsService {
           username: loc.user.username,
           logs: loc.user.consultaLogs,
         });
-        
+
         // Count active users
         if (loc.user.consultaLogs.length > 0) {
           usuariosActivosSet.add(loc.user.id);
@@ -461,24 +724,43 @@ export class UserStatsService {
         for (const user of data.users) {
           const logs = user.logs;
           const totalConsultasUser = logs.length;
-          const consultasEC = logs.filter(l => l.consultaType === 'EC').length;
-          const consultasICS = logs.filter(l => l.consultaType === 'ICS').length;
-          const consultasExitosas = logs.filter(l => l.resultado === 'SUCCESS').length;
-          const consultasConError = logs.filter(l => l.resultado === 'ERROR').length;
-          const consultasNoEncontradas = logs.filter(l => l.resultado === 'NOT_FOUND').length;
-          
-          const tiemposRespuesta = logs.filter(l => l.duracionMs !== null).map(l => l.duracionMs!);
-          const promedioTiempoRespuesta = tiemposRespuesta.length > 0 
-            ? tiemposRespuesta.reduce((a, b) => a + b, 0) / tiemposRespuesta.length 
-            : 0;
-          
+          const consultasEC = logs.filter(
+            (l) => l.consultaType === 'EC',
+          ).length;
+          const consultasICS = logs.filter(
+            (l) => l.consultaType === 'ICS',
+          ).length;
+          const consultasExitosas = logs.filter(
+            (l) => l.resultado === 'SUCCESS',
+          ).length;
+          const consultasConError = logs.filter(
+            (l) => l.resultado === 'ERROR',
+          ).length;
+          const consultasNoEncontradas = logs.filter(
+            (l) => l.resultado === 'NOT_FOUND',
+          ).length;
+
+          const tiemposRespuesta = logs
+            .filter((l) => l.duracionMs !== null)
+            .map((l) => l.duracionMs!);
+          const promedioTiempoRespuesta =
+            tiemposRespuesta.length > 0
+              ? tiemposRespuesta.reduce((a, b) => a + b, 0) /
+                tiemposRespuesta.length
+              : 0;
+
           const totalRecaudado = logs
-            .filter(l => l.resultado === 'SUCCESS' && l.totalEncontrado)
+            .filter((l) => l.resultado === 'SUCCESS' && l.totalEncontrado)
             .reduce((sum, l) => sum + (l.totalEncontrado?.toNumber() || 0), 0);
-          
-          const ultimaConsulta = logs.length > 0 
-            ? logs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0].createdAt
-            : undefined;
+
+          const ultimaConsulta =
+            logs.length > 0
+              ? logs.sort(
+                  (a, b) =>
+                    new Date(b.createdAt).getTime() -
+                    new Date(a.createdAt).getTime(),
+                )[0].createdAt
+              : undefined;
 
           usuariosStats.push({
             userId: user.id,
@@ -507,7 +789,10 @@ export class UserStatsService {
           totalConsultas: locationTotalConsultas,
           consultasEC: locationConsultasEC,
           consultasICS: locationConsultasICS,
-          promedioConsultasPorUsuario: data.users.length > 0 ? locationTotalConsultas / data.users.length : 0,
+          promedioConsultasPorUsuario:
+            data.users.length > 0
+              ? locationTotalConsultas / data.users.length
+              : 0,
           usuariosStats,
         });
       }
@@ -515,7 +800,7 @@ export class UserStatsService {
       // Get top users details efficiently
       const topUsuarios: UserStatsResponseDto[] = [];
       if (topUsersData.length > 0) {
-        const topUserIds = topUsersData.map(u => u.userId);
+        const topUserIds = topUsersData.map((u) => u.userId);
         const topUsersDetails = await this.prisma.user.findMany({
           where: {
             id: { in: topUserIds },
@@ -538,28 +823,50 @@ export class UserStatsService {
 
         // Process top users in the same order
         for (const topUserData of topUsersData) {
-          const user = topUsersDetails.find(u => u.id === topUserData.userId);
+          const user = topUsersDetails.find((u) => u.id === topUserData.userId);
           if (user) {
             const logs = user.consultaLogs;
             const totalConsultasUser = logs.length;
-            const consultasEC = logs.filter(l => l.consultaType === 'EC').length;
-            const consultasICS = logs.filter(l => l.consultaType === 'ICS').length;
-            const consultasExitosas = logs.filter(l => l.resultado === 'SUCCESS').length;
-            const consultasConError = logs.filter(l => l.resultado === 'ERROR').length;
-            const consultasNoEncontradas = logs.filter(l => l.resultado === 'NOT_FOUND').length;
-            
-            const tiemposRespuesta = logs.filter(l => l.duracionMs !== null).map(l => l.duracionMs!);
-            const promedioTiempoRespuesta = tiemposRespuesta.length > 0 
-              ? tiemposRespuesta.reduce((a, b) => a + b, 0) / tiemposRespuesta.length 
-              : 0;
-            
+            const consultasEC = logs.filter(
+              (l) => l.consultaType === 'EC',
+            ).length;
+            const consultasICS = logs.filter(
+              (l) => l.consultaType === 'ICS',
+            ).length;
+            const consultasExitosas = logs.filter(
+              (l) => l.resultado === 'SUCCESS',
+            ).length;
+            const consultasConError = logs.filter(
+              (l) => l.resultado === 'ERROR',
+            ).length;
+            const consultasNoEncontradas = logs.filter(
+              (l) => l.resultado === 'NOT_FOUND',
+            ).length;
+
+            const tiemposRespuesta = logs
+              .filter((l) => l.duracionMs !== null)
+              .map((l) => l.duracionMs!);
+            const promedioTiempoRespuesta =
+              tiemposRespuesta.length > 0
+                ? tiemposRespuesta.reduce((a, b) => a + b, 0) /
+                  tiemposRespuesta.length
+                : 0;
+
             const totalRecaudado = logs
-              .filter(l => l.resultado === 'SUCCESS' && l.totalEncontrado)
-              .reduce((sum, l) => sum + (l.totalEncontrado?.toNumber() || 0), 0);
-            
-            const ultimaConsulta = logs.length > 0 
-              ? logs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0].createdAt
-              : undefined;
+              .filter((l) => l.resultado === 'SUCCESS' && l.totalEncontrado)
+              .reduce(
+                (sum, l) => sum + (l.totalEncontrado?.toNumber() || 0),
+                0,
+              );
+
+            const ultimaConsulta =
+              logs.length > 0
+                ? logs.sort(
+                    (a, b) =>
+                      new Date(b.createdAt).getTime() -
+                      new Date(a.createdAt).getTime(),
+                  )[0].createdAt
+                : undefined;
 
             topUsuarios.push({
               userId: user.id,
@@ -823,7 +1130,10 @@ export class UserStatsService {
       );
 
       // Combinar ubicaciones activas e inactivas
-      const allLocations = [...locationsWithUsers, ...inactiveLocationsWithUsers];
+      const allLocations = [
+        ...locationsWithUsers,
+        ...inactiveLocationsWithUsers,
+      ];
 
       // Ordenar por estado (activas primero) y luego por nombre
       return allLocations.sort((a, b) => {
