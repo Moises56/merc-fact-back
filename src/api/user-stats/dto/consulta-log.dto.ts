@@ -62,6 +62,11 @@ export class CreateConsultaLogDto {
   @ApiProperty({ description: 'ID del usuario que hizo la consulta' })
   @IsString()
   userId: string;
+
+  @ApiProperty({ description: 'Clave de consulta (claveCatastral o dni)', required: false })
+  @IsOptional()
+  @IsString()
+  consultaKey?: string;
 }
 
 export class ConsultaLogResponseDto {

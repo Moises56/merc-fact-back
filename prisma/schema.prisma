@@ -162,9 +162,14 @@ model ConsultaLog {
   userAgent       String?
   duracionMs      Int?     // Duración de la consulta en milisegundos
   
+  // Nuevos campos para historial detallado
+  consultaKey     String?  // Clave consultada extraída (DNI, clave catastral, ICS, etc.)
+  userLocationId  String?  // ID de la ubicación del usuario al momento de la consulta
+  
   // Relaciones
   userId          String
   user            User @relation(fields: [userId], references: [id])
+  userLocation    UserLocation? @relation(fields: [userLocationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   
   createdAt       DateTime @default(now())
   
@@ -173,6 +178,9 @@ model ConsultaLog {
   @@index([consultaType, consultaSubtype])
   @@index([userId, consultaType, consultaSubtype])
   @@index([createdAt])
+  @@index([userLocationId])
+  @@index([consultaKey])
+  @@index([userId, userLocationId])
   @@map("consulta_logs")
 }
 
@@ -189,6 +197,7 @@ model UserLocation {
   userId       String
   user         User @relation(fields: [userId], references: [id])
   assignedByUser User? @relation("UserLocationAssignedBy", fields: [assignedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  consultaLogs ConsultaLog[] // Logs de consultas realizadas en esta ubicación
   
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

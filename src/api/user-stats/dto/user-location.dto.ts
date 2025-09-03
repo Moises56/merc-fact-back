@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsOptional, IsBoolean, IsDateString } from 'class-validator';
+import { ConsultaType, ConsultaSubtype } from './consulta-log.dto';
 
 // DTO para estadísticas de consultas por tipo
 export class ConsultationStatsDto {
@@ -58,6 +59,41 @@ export class ConsultationStatsDto {
     required: false,
   })
   totalAcumulado?: number;
+}
+
+// DTO para historial detallado de consultas por tipo
+export class TypeConsultaHistoryDto {
+  @ApiProperty({
+    enum: ConsultaType,
+    description: 'Tipo de consulta (EC o ICS)',
+    example: 'EC'
+  })
+  type: ConsultaType;
+
+  @ApiProperty({
+    enum: ConsultaSubtype,
+    description: 'Método de consulta (normal o amnistia)',
+    example: 'normal'
+  })
+  method: ConsultaSubtype;
+
+  @ApiProperty({
+    description: 'Clave de consulta (claveCatastral o dni)',
+    example: '12345678901234567890'
+  })
+  key: string;
+
+  @ApiProperty({
+    description: 'Total consultado formateado como moneda',
+    example: 'L.1,250.75'
+  })
+  total: string;
+
+  @ApiProperty({
+    description: 'Fecha de la consulta',
+    example: '2024-01-15T10:30:00Z'
+  })
+  consultedAt: Date;
 }
 
 export class AssignUserLocationDto {
@@ -164,6 +200,13 @@ export class UserLocationHistoryItemDto {
     required: false 
   })
   consultationStats?: ConsultationStatsDto;
+
+  @ApiProperty({
+    description: 'Historial detallado de consultas por tipo',
+    type: [TypeConsultaHistoryDto],
+    required: false
+  })
+  typeConsultaHistory?: TypeConsultaHistoryDto[];
 }
 
 export class UserLocationHistoryResponseDto {

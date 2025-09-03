@@ -35,6 +35,9 @@ export class ConsultaLogInterceptor implements NestInterceptor {
     
     // Combinar body y query parameters para capturar todos los parámetros
     const parametros = { ...body, ...query };
+    
+    // Extraer clave de consulta (claveCatastral, dni o ics)
+    const consultaKey = parametros.claveCatastral || parametros.dni || parametros.ics || null;
 
     // Determinar tipo de consulta basado en la ruta
     let consultaType: ConsultaType | null = null;
@@ -100,6 +103,7 @@ export class ConsultaLogInterceptor implements NestInterceptor {
           userAgent,
           duracionMs,
           userId: user.id,
+          consultaKey,
         });
       }),
       catchError((error) => {
@@ -118,6 +122,7 @@ export class ConsultaLogInterceptor implements NestInterceptor {
           userAgent,
           duracionMs,
           userId: user.id,
+          consultaKey,
         });
 
         throw error;
@@ -136,6 +141,7 @@ export class ConsultaLogInterceptor implements NestInterceptor {
     userAgent?: string;
     duracionMs: number;
     userId: string;
+    consultaKey?: string;
   }) {
     try {
       this.logger.debug(`💾 Guardando log en base de datos...`);
