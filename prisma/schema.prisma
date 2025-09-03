@@ -38,6 +38,7 @@ model User {
   auditLogs       AuditLog[]
   consultaLogs    ConsultaLog[]
   userLocations   UserLocation[]
+  assignedUserLocations UserLocation[] @relation("UserLocationAssignedBy")
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -168,6 +169,9 @@ model ConsultaLog {
   createdAt       DateTime @default(now())
   
   @@index([userId, consultaType])
+  @@index([userId, createdAt])
+  @@index([consultaType, consultaSubtype])
+  @@index([userId, consultaType, consultaSubtype])
   @@index([createdAt])
   @@map("consulta_logs")
 }
@@ -184,6 +188,7 @@ model UserLocation {
   // Relaciones
   userId       String
   user         User @relation(fields: [userId], references: [id])
+  assignedByUser User? @relation("UserLocationAssignedBy", fields: [assignedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
   
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

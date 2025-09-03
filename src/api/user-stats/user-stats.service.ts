@@ -13,6 +13,7 @@ import {
   UserLocationHistoryResponseDto,
   UserLocationHistoryItemDto,
   GetUserLocationHistoryDto,
+  ConsultationStatsDto,
 } from './dto/user-location.dto';
 import {
   GetUserStatsDto,
@@ -212,6 +213,9 @@ export class UserStatsService {
         sortOrder = 'desc',
         limit = 50,
         page = 1,
+        includeConsultationStats = false,
+        statsDateFrom,
+        statsDateTo,
       } = options || {};
       const skip = (page - 1) * limit;
 
@@ -221,7 +225,7 @@ export class UserStatsService {
         whereClause.isActive = true;
       }
 
-      // Obtener ubicaciones del usuario
+      // Obtener ubicaciones del usuario con información del usuario asignador
       const userLocations = await this.prisma.userLocation.findMany({
         where: whereClause,
         orderBy: {
@@ -229,6 +233,16 @@ export class UserStatsService {
         },
         skip,
         take: limit,
+        include: {
+          assignedByUser: {
+            select: {
+              id: true,
+              username: true,
+              nombre: true,
+              apellido: true,
+            },
+          },
+        },
       });
 
       // Obtener información adicional para calcular duraciones
@@ -237,9 +251,12 @@ export class UserStatsService {
         orderBy: { assignedAt: 'asc' },
       });
 
-      // Procesar ubicaciones para calcular duraciones
-      const locationHistory: UserLocationHistoryItemDto[] = userLocations.map(
-        (location) => {
+      // Procesar ubicaciones para calcular duraciones y estadísticas
+      const dateFrom = statsDateFrom ? new Date(statsDateFrom) : undefined;
+      const dateTo = statsDateTo ? new Date(statsDateTo) : undefined;
+
+      const locationHistory: UserLocationHistoryItemDto[] = await Promise.all(
+        userLocations.map(async (location) => {
           let durationDays: number | undefined;
           let deactivatedAt: Date | undefined;
 
@@ -268,6 +285,34 @@ export class UserStatsService {
             );
           }
 
+          // Obtener estadísticas por ubicación si está habilitado
+          let consultationStats: ConsultationStatsDto | undefined;
+          if (includeConsultationStats) {
+            try {
+              consultationStats = await this.getUserLocationConsultationStats(
+                userId,
+                location.locationName,
+                dateFrom,
+                dateTo,
+              );
+            } catch (error) {
+              this.logger.warn(
+                `Error al obtener estadísticas para ubicación ${location.locationName}: ${error.message}`,
+              );
+            }
+          }
+
+          // Construir el nombre completo del usuario asignador
+          let assignedByUsername: string | undefined;
+          if (location.assignedByUser) {
+            const { nombre, apellido, username } = location.assignedByUser;
+            if (nombre && apellido) {
+              assignedByUsername = `${nombre} ${apellido} (${username})`;
+            } else {
+              assignedByUsername = username;
+            }
+          }
+
           return {
             id: location.id,
             locationName: location.locationName,
@@ -276,13 +321,14 @@ export class UserStatsService {
             isActive: location.isActive,
             assignedAt: location.assignedAt,
             assignedBy: location.assignedBy ?? undefined,
-            assignedByUsername: location.assignedBy ?? undefined, // TODO: Obtener username real del assignedBy
+            assignedByUsername,
             createdAt: location.createdAt,
             updatedAt: location.updatedAt,
             durationDays,
             deactivatedAt,
+            consultationStats,
           };
-        },
+        }),
       );
 
       // Obtener ubicación actual
@@ -296,7 +342,8 @@ export class UserStatsService {
       const firstLocation = allUserLocations[0];
       const lastLocation = allUserLocations[allUserLocations.length - 1];
 
-      return {
+      // Preparar respuesta base
+      const response: UserLocationHistoryResponseDto = {
         userId: user.id,
         username: user.username,
         nombre: user.nombre,
@@ -307,12 +354,253 @@ export class UserStatsService {
         firstAssignedAt: firstLocation?.assignedAt,
         lastAssignedAt: lastLocation?.assignedAt,
       };
+
+      // Obtener estadísticas de consultas si está habilitado
+      if (includeConsultationStats) {
+        const dateFrom = statsDateFrom ? new Date(statsDateFrom) : undefined;
+        const dateTo = statsDateTo ? new Date(statsDateTo) : undefined;
+        
+        response.consultationStats = await this.getUserConsultationStats(
+          userId,
+          dateFrom,
+          dateTo,
+        );
+      }
+
+      return response;
     } catch (error) {
       this.logger.error(
         `Error al obtener historial de ubicaciones: ${error.message}`,
         error.stack,
       );
       throw error;
+    }
+  }
+
+  // Método privado para obtener estadísticas de consultas por usuario (optimizado)
+  private async getUserConsultationStats(
+    userId: string,
+    dateFrom?: Date,
+    dateTo?: Date,
+  ): Promise<ConsultationStatsDto> {
+    try {
+      const whereClause: any = { userId };
+      
+      if (dateFrom || dateTo) {
+        whereClause.createdAt = {};
+        if (dateFrom) whereClause.createdAt.gte = dateFrom;
+        if (dateTo) whereClause.createdAt.lte = dateTo;
+      }
+
+      // Usar una sola consulta SQL optimizada con agregaciones
+      const result = await this.prisma.consultaLog.aggregate({
+        where: whereClause,
+        _count: {
+          id: true,
+        },
+        _sum: {
+          duracionMs: true,
+          totalEncontrado: true,
+        },
+      });
+
+      // Obtener conteos específicos usando consultas paralelas optimizadas
+       const [icsNormalCount, icsAmnistiaCount, ecNormalCount, ecAmnistiaCount, successCount, errorCount] = await Promise.all([
+         this.prisma.consultaLog.count({
+           where: { ...whereClause, consultaType: 'ICS', consultaSubtype: 'normal' },
+         }),
+         this.prisma.consultaLog.count({
+           where: { ...whereClause, consultaType: 'ICS', consultaSubtype: 'amnistia' },
+         }),
+         this.prisma.consultaLog.count({
+           where: { ...whereClause, consultaType: 'EC', consultaSubtype: 'normal' },
+         }),
+         this.prisma.consultaLog.count({
+           where: { ...whereClause, consultaType: 'EC', consultaSubtype: 'amnistia' },
+         }),
+         this.prisma.consultaLog.count({
+           where: { ...whereClause, resultado: 'SUCCESS' },
+         }),
+         this.prisma.consultaLog.count({
+           where: { ...whereClause, resultado: { in: ['ERROR', 'NOT_FOUND'] } },
+         }),
+       ]);
+
+      const totalConsultas = result._count.id || 0;
+      const totalDuracion = result._sum.duracionMs || 0;
+      const totalAcumulado = Number(result._sum.totalEncontrado || 0);
+      const promedioDuracionMs = totalConsultas > 0 ? Math.round(totalDuracion / totalConsultas) : undefined;
+
+      return {
+        icsNormal: icsNormalCount,
+        icsAmnistia: icsAmnistiaCount,
+        ecNormal: ecNormalCount,
+        ecAmnistia: ecAmnistiaCount,
+        totalExitosas: successCount,
+        totalErrores: errorCount,
+        totalConsultas,
+        promedioDuracionMs,
+        totalAcumulado: totalAcumulado > 0 ? totalAcumulado : undefined,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error al obtener estadísticas de consultas para usuario ${userId}: ${error.message}`,
+        error.stack,
+      );
+      // Retornar estadísticas vacías en caso de error
+      return {
+        icsNormal: 0,
+        icsAmnistia: 0,
+        ecNormal: 0,
+        ecAmnistia: 0,
+        totalExitosas: 0,
+        totalErrores: 0,
+        totalConsultas: 0,
+      };
+    }
+  }
+
+  private async getUserLocationConsultationStats(
+    userId: string,
+    locationName: string,
+    dateFrom?: Date,
+    dateTo?: Date,
+  ): Promise<ConsultationStatsDto> {
+    try {
+      // Obtener el período de tiempo que el usuario estuvo en esta ubicación específica
+      const userLocation = await this.prisma.userLocation.findFirst({
+        where: {
+          userId,
+          locationName,
+        },
+        orderBy: {
+          assignedAt: 'desc',
+        },
+      });
+
+      if (!userLocation) {
+        // Si no se encuentra la ubicación, retornar estadísticas vacías
+        return {
+          icsNormal: 0,
+          icsAmnistia: 0,
+          ecNormal: 0,
+          ecAmnistia: 0,
+          totalExitosas: 0,
+          totalErrores: 0,
+          totalConsultas: 0,
+        };
+      }
+
+      // Determinar el rango de fechas para esta ubicación específica
+      const locationStartDate = userLocation.assignedAt;
+      let locationEndDate: Date | undefined;
+
+      if (!userLocation.isActive) {
+        // Si la ubicación no está activa, buscar cuándo se desactivó
+        const nextLocation = await this.prisma.userLocation.findFirst({
+          where: {
+            userId,
+            assignedAt: {
+              gt: userLocation.assignedAt,
+            },
+          },
+          orderBy: {
+            assignedAt: 'asc',
+          },
+        });
+        locationEndDate = nextLocation?.assignedAt;
+      }
+
+      // Construir el whereClause basado en el período de la ubicación
+      const whereClause: any = {
+        userId,
+        createdAt: {
+          gte: locationStartDate,
+        },
+      };
+
+      // Aplicar fecha de fin si la ubicación no está activa
+      if (locationEndDate) {
+        whereClause.createdAt.lt = locationEndDate;
+      }
+
+      // Aplicar filtros de fecha adicionales si se proporcionan
+      if (dateFrom && dateFrom > locationStartDate) {
+        whereClause.createdAt.gte = dateFrom;
+      }
+      if (dateTo) {
+        if (locationEndDate) {
+          whereClause.createdAt.lte = dateTo < locationEndDate ? dateTo : locationEndDate;
+        } else {
+          whereClause.createdAt.lte = dateTo;
+        }
+      }
+
+      // Usar una sola consulta SQL optimizada con agregaciones
+      const result = await this.prisma.consultaLog.aggregate({
+        where: whereClause,
+        _count: {
+          id: true,
+        },
+        _sum: {
+          duracionMs: true,
+          totalEncontrado: true,
+        },
+      });
+
+      // Obtener conteos específicos usando consultas paralelas optimizadas
+       const [icsNormalCount, icsAmnistiaCount, ecNormalCount, ecAmnistiaCount, successCount, errorCount] = await Promise.all([
+         this.prisma.consultaLog.count({
+           where: { ...whereClause, consultaType: 'ICS', consultaSubtype: 'normal' },
+         }),
+         this.prisma.consultaLog.count({
+           where: { ...whereClause, consultaType: 'ICS', consultaSubtype: 'amnistia' },
+         }),
+         this.prisma.consultaLog.count({
+           where: { ...whereClause, consultaType: 'EC', consultaSubtype: 'normal' },
+         }),
+         this.prisma.consultaLog.count({
+           where: { ...whereClause, consultaType: 'EC', consultaSubtype: 'amnistia' },
+         }),
+         this.prisma.consultaLog.count({
+           where: { ...whereClause, resultado: 'SUCCESS' },
+         }),
+         this.prisma.consultaLog.count({
+           where: { ...whereClause, resultado: { in: ['ERROR', 'NOT_FOUND'] } },
+         }),
+       ]);
+
+      const totalConsultas = result._count.id || 0;
+      const totalDuracion = result._sum.duracionMs || 0;
+      const totalAcumulado = Number(result._sum.totalEncontrado || 0);
+      const promedioDuracionMs = totalConsultas > 0 ? Math.round(totalDuracion / totalConsultas) : undefined;
+
+      return {
+        icsNormal: icsNormalCount,
+        icsAmnistia: icsAmnistiaCount,
+        ecNormal: ecNormalCount,
+        ecAmnistia: ecAmnistiaCount,
+        totalExitosas: successCount,
+        totalErrores: errorCount,
+        totalConsultas,
+        promedioDuracionMs,
+        totalAcumulado: totalAcumulado > 0 ? totalAcumulado : undefined,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error al obtener estadísticas de consultas para usuario ${userId} en ubicación ${locationName}: ${error.message}`,
+        error.stack,
+      );
+      // Retornar estadísticas vacías en caso de error
+      return {
+        icsNormal: 0,
+        icsAmnistia: 0,
+        ecNormal: 0,
+        ecAmnistia: 0,
+        totalExitosas: 0,
+        totalErrores: 0,
+        totalConsultas: 0,
+      };
     }
   }
 
@@ -326,8 +614,15 @@ export class UserStatsService {
         sortOrder = 'desc',
         limit = 50,
         page = 1,
+        includeConsultationStats = true,
+        statsDateFrom,
+        statsDateTo,
       } = options || {};
       const skip = (page - 1) * limit;
+
+      // Convertir fechas de string a Date si están presentes
+      const dateFrom = statsDateFrom ? new Date(statsDateFrom) : undefined;
+      const dateTo = statsDateTo ? new Date(statsDateTo) : undefined;
 
       // Obtener usuarios con ubicaciones
       const usersWithLocations = await this.prisma.user.findMany({
@@ -346,21 +641,37 @@ export class UserStatsService {
         take: limit,
       });
 
-      // Obtener historial para cada usuario
+      // Obtener historial para cada usuario con estadísticas de consultas en paralelo
       const results: UserLocationHistoryResponseDto[] = [];
-      for (const user of usersWithLocations) {
+      
+      // Usar Promise.allSettled para procesar usuarios en paralelo y manejar errores individualmente
+      const userPromises = usersWithLocations.map(async (user) => {
         try {
+          // Obtener historial de ubicaciones con estadísticas incluidas
           const userHistory = await this.getUserLocationHistory(user.id, {
             activeOnly,
             sortOrder,
+            includeConsultationStats,
+            statsDateFrom,
+            statsDateTo,
           });
-          results.push(userHistory);
+
+          return userHistory;
         } catch (error) {
-          // Continuar con el siguiente usuario si hay error
           this.logger.warn(
-            `Error obteniendo historial para usuario ${user.id}:`,
+            `Error obteniendo datos para usuario ${user.id}:`,
             error,
           );
+          return null;
+        }
+      });
+
+      const settledResults = await Promise.allSettled(userPromises);
+      
+      // Filtrar resultados exitosos
+      for (const result of settledResults) {
+        if (result.status === 'fulfilled' && result.value !== null) {
+          results.push(result.value);
         }
       }
 

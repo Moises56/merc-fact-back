@@ -1,6 +1,65 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsOptional, IsBoolean, IsDateString } from 'class-validator';
 
+// DTO para estadísticas de consultas por tipo
+export class ConsultationStatsDto {
+  @ApiProperty({
+    description: 'Número de consultas ICS normales (sin amnistía)',
+    example: 25,
+  })
+  icsNormal: number;
+
+  @ApiProperty({
+    description: 'Número de consultas ICS con amnistía',
+    example: 8,
+  })
+  icsAmnistia: number;
+
+  @ApiProperty({
+    description: 'Número de consultas EC normales (sin amnistía)',
+    example: 15,
+  })
+  ecNormal: number;
+
+  @ApiProperty({
+    description: 'Número de consultas EC con amnistía',
+    example: 5,
+  })
+  ecAmnistia: number;
+
+  @ApiProperty({
+    description: 'Total de consultas exitosas',
+    example: 45,
+  })
+  totalExitosas: number;
+
+  @ApiProperty({
+    description: 'Total de consultas con error',
+    example: 8,
+  })
+  totalErrores: number;
+
+  @ApiProperty({
+    description: 'Total de consultas realizadas',
+    example: 53,
+  })
+  totalConsultas: number;
+
+  @ApiProperty({
+    description: 'Duración promedio de consultas en milisegundos',
+    example: 1250,
+    required: false,
+  })
+  promedioDuracionMs?: number;
+
+  @ApiProperty({
+    description: 'Total acumulado de resultados encontrados',
+    example: 125000.50,
+    required: false,
+  })
+  totalAcumulado?: number;
+}
+
 export class AssignUserLocationDto {
   @ApiProperty({ description: 'ID del usuario' })
   @IsString()
@@ -98,6 +157,13 @@ export class UserLocationHistoryItemDto {
     description: 'Fecha cuando se desactivó esta ubicación',
   })
   deactivatedAt?: Date;
+
+  @ApiProperty({ 
+    description: 'Estadísticas de consultas realizadas en esta ubicación específica',
+    type: ConsultationStatsDto,
+    required: false 
+  })
+  consultationStats?: ConsultationStatsDto;
 }
 
 export class UserLocationHistoryResponseDto {
@@ -127,6 +193,13 @@ export class UserLocationHistoryResponseDto {
 
   @ApiProperty({ required: false })
   lastAssignedAt?: Date;
+
+  @ApiProperty({ 
+    description: 'Estadísticas de consultas realizadas por el usuario',
+    type: ConsultationStatsDto,
+    required: false 
+  })
+  consultationStats?: ConsultationStatsDto;
 }
 
 export class GetUserLocationHistoryDto {
@@ -168,4 +241,29 @@ export class GetUserLocationHistoryDto {
   })
   @IsOptional()
   page?: number;
+
+  @ApiProperty({
+    description: 'Incluir estadísticas de consultas',
+    required: false,
+    default: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  includeConsultationStats?: boolean;
+
+  @ApiProperty({
+    description: 'Fecha de inicio para filtrar estadísticas de consultas (ISO 8601)',
+    required: false,
+  })
+  @IsOptional()
+  @IsDateString()
+  statsDateFrom?: string;
+
+  @ApiProperty({
+    description: 'Fecha de fin para filtrar estadísticas de consultas (ISO 8601)',
+    required: false,
+  })
+  @IsOptional()
+  @IsDateString()
+  statsDateTo?: string;
 }

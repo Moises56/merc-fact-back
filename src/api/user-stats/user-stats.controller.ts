@@ -143,7 +143,7 @@ export class UserStatsController {
   @ApiOperation({
     summary: 'Obtener historial completo de ubicaciones de un usuario',
     description:
-      'Retorna el historial completo de ubicaciones asignadas a un usuario específico, incluyendo ubicaciones activas e inactivas con información de duración y fechas de cambio.',
+      'Retorna el historial completo de ubicaciones asignadas a un usuario específico, incluyendo ubicaciones activas e inactivas con información de duración, fechas de cambio y estadísticas de consultas por tipo (ICS/EC con/sin amnistía).',
   })
   @ApiResponse({
     status: 200,
@@ -160,12 +160,18 @@ export class UserStatsController {
     @Query('sortOrder') sortOrder?: 'asc' | 'desc',
     @Query('limit') limit?: number,
     @Query('page') page?: number,
+    @Query('includeConsultationStats') includeConsultationStats?: boolean,
+    @Query('statsDateFrom') statsDateFrom?: string,
+    @Query('statsDateTo') statsDateTo?: string,
   ): Promise<UserLocationHistoryResponseDto> {
     const options: GetUserLocationHistoryDto = {
       activeOnly,
       sortOrder,
       limit,
       page,
+      includeConsultationStats,
+      statsDateFrom,
+      statsDateTo,
     };
     return this.userStatsService.getUserLocationHistory(userId, options);
   }
@@ -177,7 +183,7 @@ export class UserStatsController {
   @ApiOperation({
     summary: 'Obtener historial de ubicaciones de todos los usuarios',
     description:
-      'Retorna el historial de ubicaciones de todos los usuarios del sistema con paginación y filtros.',
+      'Obtiene el historial de ubicaciones de todos los usuarios con opciones de filtrado, paginación y estadísticas de consultas por tipo (ICS/EC con/sin amnistía)',
   })
   @ApiResponse({
     status: 200,
@@ -190,12 +196,18 @@ export class UserStatsController {
     @Query('sortOrder') sortOrder?: 'asc' | 'desc',
     @Query('limit') limit?: number,
     @Query('page') page?: number,
+    @Query('includeConsultationStats') includeConsultationStats?: boolean,
+    @Query('statsDateFrom') statsDateFrom?: string,
+    @Query('statsDateTo') statsDateTo?: string,
   ): Promise<UserLocationHistoryResponseDto[]> {
     const options: GetUserLocationHistoryDto = {
       activeOnly,
       sortOrder,
       limit,
       page,
+      includeConsultationStats,
+      statsDateFrom,
+      statsDateTo,
     };
     return this.userStatsService.getAllUsersLocationHistory(options);
   }
@@ -261,6 +273,42 @@ export class UserStatsController {
     @Req() req: any,
   ): Promise<UserStatsResponseDto> {
     return this.userStatsService.getUserStats(req.user.id, filters);
+  }
+
+  @Get('my-location-history')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Obtener mi historial de ubicaciones',
+    description:
+      'Cualquier usuario autenticado puede ver su propio historial de ubicaciones',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Historial de ubicaciones obtenido exitosamente',
+    type: UserLocationHistoryResponseDto,
+  })
+  async getMyLocationHistory(
+    @Req() req: any,
+    @Query('activeOnly') activeOnly?: boolean,
+    @Query('sortOrder') sortOrder?: 'asc' | 'desc',
+    @Query('limit') limit?: number,
+    @Query('page') page?: number,
+    @Query('includeConsultationStats') includeConsultationStats?: boolean,
+    @Query('statsDateFrom') statsDateFrom?: string,
+    @Query('statsDateTo') statsDateTo?: string,
+  ): Promise<UserLocationHistoryResponseDto> {
+    return this.userStatsService.getUserLocationHistory(
+      req.user.id,
+      {
+        activeOnly,
+        sortOrder,
+        limit,
+        page,
+        includeConsultationStats,
+        statsDateFrom,
+        statsDateTo,
+      },
+    );
   }
 
   // Endpoint interno para registrar logs (usado por los servicios de consulta)
