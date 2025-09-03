@@ -165,12 +165,10 @@ export class ConsultaEcService {
       const trenDeAseoNumerico = parseFloat(registro['Tren de Aseo']) || 0;
       const tasaBomberosNumerico = parseFloat(registro['Tasa Bomberos']) || 0;
 
-      // Calcular recargo (2% mensual)
-      const mesesVencidos = Math.ceil(dias / 30);
-      const porcentajeRecargo = mesesVencidos * 0.02;
+      // Calcular recargo: [(impuesto+trenAseo+bomberos)(diasVencidos)(22%)]/360
       const baseRecargo =
         impuestoNumerico + trenDeAseoNumerico + tasaBomberosNumerico;
-      const recargoNumerico = baseRecargo * porcentajeRecargo;
+      const recargoNumerico = (baseRecargo * dias * 0.22) / 360;
 
       const totalNumerico =
         impuestoNumerico +
@@ -272,12 +270,10 @@ export class ConsultaEcService {
         const trenDeAseoNumerico = parseFloat(registro['Tren de Aseo']) || 0;
         const tasaBomberosNumerico = parseFloat(registro['Tasa Bomberos']) || 0;
 
-        // Calcular recargo (2% mensual)
-        const mesesVencidos = Math.ceil(dias / 30);
-        const porcentajeRecargo = mesesVencidos * 0.02;
+        // Calcular recargo: [(impuesto+trenAseo+bomberos)(diasVencidos)(22%)]/360
         const baseRecargo =
           impuestoNumerico + trenDeAseoNumerico + tasaBomberosNumerico;
-        const recargoNumerico = baseRecargo * porcentajeRecargo;
+        const recargoNumerico = (baseRecargo * dias * 0.22) / 360;
 
         const totalNumerico =
           impuestoNumerico +
