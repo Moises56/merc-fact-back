@@ -34,10 +34,10 @@ export class AuditInterceptor implements NestInterceptor {
     }
 
     const request = context.switchToHttp().getRequest();
-    
+
     // Extraer datos básicos del request
     const { user, body, params, method, headers } = request;
-    
+
     // Obtener la IP real del cliente y limpiar el formato IPv6 mapeado
     const rawIp = request.ip || request.connection.remoteAddress;
     // Eliminar el prefijo ::ffff: que aparece cuando una IPv4 se mapea a formato IPv6
@@ -45,13 +45,13 @@ export class AuditInterceptor implements NestInterceptor {
 
     // Extraer userId correctamente del JWT payload
     let userId = user?.userId || user?.sub || user?.id || null;
-    
+
     // Para el endpoint de login, obtener el userId del resultado
     if (auditOptions.action === 'LOGIN' && !userId) {
       // En este caso, obtendremos el userId del resultado del login
       userId = 'pending'; // Marcador temporal
     }
-    
+
     // Log para debug
     console.log('🔍 Audit Debug - User:', user);
     console.log(
@@ -68,9 +68,7 @@ export class AuditInterceptor implements NestInterceptor {
 
     // Capturar datos antes de la operación (limitando tamaño)
     const beforeData =
-      method === 'PUT' || method === 'PATCH'
-        ? this.limitDataSize(body)
-        : null;
+      method === 'PUT' || method === 'PATCH' ? this.limitDataSize(body) : null;
 
     return next.handle().pipe(
       tap({
@@ -80,7 +78,7 @@ export class AuditInterceptor implements NestInterceptor {
           if (auditOptions.action === 'LOGIN' && result?.user?.id) {
             finalUserId = result.user.id;
           }
-          
+
           // Log exitoso solo si tenemos un userId válido
           if (finalUserId && finalUserId !== 'pending') {
             void this.logAuditAction(
@@ -115,14 +113,14 @@ export class AuditInterceptor implements NestInterceptor {
 
   private limitDataSize(data: any): any {
     if (!data) return data;
-    
+
     const dataString = JSON.stringify(data);
     const maxSize = 1000; // Limit to 1000 characters
-    
+
     if (dataString.length > maxSize) {
       return JSON.stringify(data).substring(0, maxSize) + '... [truncated]';
     }
-    
+
     return data;
   }
 
