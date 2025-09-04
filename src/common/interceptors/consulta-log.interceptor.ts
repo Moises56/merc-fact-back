@@ -26,7 +26,12 @@ export class ConsultaLogInterceptor implements NestInterceptor {
 
     // Extraer información del request
     const user = request.user;
-    const ip = request.ip || request.connection.remoteAddress;
+    
+    // Obtener la IP real del cliente y limpiar el formato IPv6 mapeado
+    const rawIp = request.ip || request.connection.remoteAddress;
+    // Eliminar el prefijo ::ffff: que aparece cuando una IPv4 se mapea a formato IPv6
+    const ip = rawIp?.replace(/^::ffff:/, '') || rawIp;
+    
     const userAgent = request.headers['user-agent'];
     const path = request.route?.path || request.url;
     const method = request.method;

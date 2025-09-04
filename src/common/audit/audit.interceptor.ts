@@ -34,7 +34,14 @@ export class AuditInterceptor implements NestInterceptor {
     }
 
     const request = context.switchToHttp().getRequest();
-    const { user, body, params, method, ip, headers } = request;
+    
+    // Extraer datos básicos del request
+    const { user, body, params, method, headers } = request;
+    
+    // Obtener la IP real del cliente y limpiar el formato IPv6 mapeado
+    const rawIp = request.ip || request.connection.remoteAddress;
+    // Eliminar el prefijo ::ffff: que aparece cuando una IPv4 se mapea a formato IPv6
+    const ip = rawIp?.replace(/^::ffff:/, '') || rawIp;
 
     // Extraer userId correctamente del JWT payload
     let userId = user?.userId || user?.sub || user?.id || null;

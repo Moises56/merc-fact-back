@@ -15,7 +15,13 @@ export class PerformanceInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const start = Date.now();
     const request = context.switchToHttp().getRequest();
-    const { method, url, ip } = request;
+    const { method, url } = request;
+    
+    // Obtener la IP real del cliente y limpiar el formato IPv6 mapeado
+    const rawIp = request.ip || request.connection.remoteAddress;
+    // Eliminar el prefijo ::ffff: que aparece cuando una IPv4 se mapea a formato IPv6
+    const ip = rawIp?.replace(/^::ffff:/, '') || rawIp;
+    
     const userAgent = request.get('User-Agent') || 'Unknown';
 
     return next.handle().pipe(
