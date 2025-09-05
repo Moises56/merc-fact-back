@@ -1402,7 +1402,8 @@ export class UserStatsService {
   ): Promise<{ logs: ConsultaLogResponseDto[]; total: number }> {
     try {
       const dateRange = this.getDateRange(filters);
-      const { limit = 50, offset = 0 } = filters;
+      const limit = parseInt(filters.limit as any) || 50;
+      const offset = parseInt(filters.offset as any) || 0;
 
       const where = {
         createdAt: {
