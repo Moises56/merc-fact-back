@@ -133,20 +133,16 @@ export class UserStatsService {
 
       // Usar transacción para garantizar consistencia
       const location = await this.prisma.$transaction(async (prisma) => {
-        // Desactivar ubicación anterior si existe
+        // Eliminar ubicación anterior si existe (en lugar de desactivar)
         if (currentLocation) {
-          await prisma.userLocation.update({
+          await prisma.userLocation.delete({
             where: {
               id: currentLocation.id,
-            },
-            data: {
-              isActive: false,
-              updatedAt: assignmentDate,
             },
           });
 
           this.logger.log(
-            `Ubicación anterior desactivada para usuario ${user.username} (${data.userId}): ${currentLocation.locationName} -> ${data.locationName}`,
+            `Ubicación anterior eliminada para usuario ${user.username} (${data.userId}): ${currentLocation.locationName} -> ${data.locationName}`,
           );
         }
 
