@@ -1405,13 +1405,89 @@ export class UserStatsService {
       const limit = parseInt(filters.limit as any) || 50;
       const offset = parseInt(filters.offset as any) || 0;
 
-      const where = {
+      const where: any = {
         createdAt: {
           gte: dateRange.start,
           lte: dateRange.end,
         },
         ...(filters.userId && { userId: filters.userId }),
+        ...(filters.consultaType && { consultaType: filters.consultaType }),
+        ...(filters.consultaSubtype && {
+          consultaSubtype: filters.consultaSubtype,
+        }),
+        ...(filters.resultado && { resultado: filters.resultado }),
       };
+
+      // Filtro por username
+      if (filters.username) {
+        where.user = {
+          username: {
+            contains: filters.username,
+          },
+        };
+      }
+
+      // Filtro por userLocation
+      if (filters.userLocation) {
+        where.user = {
+          ...where.user,
+          userLocations: {
+            some: {
+              locationName: {
+                contains: filters.userLocation,
+              },
+              isActive: true,
+            },
+          },
+        };
+      }
+
+      // Filtro por parámetros (claveCatastral o dni)
+      if (filters.parametros) {
+        const searchValue = filters.parametros.toLowerCase();
+
+        // Si contiene letras, es probablemente un DNI
+        if (/[a-zA-Z]/.test(searchValue)) {
+          where.AND = [
+            ...(where.AND || []),
+            {
+              OR: [
+                {
+                  parametros: {
+                    contains: filters.parametros,
+                  },
+                },
+                {
+                  consultaType: 'EC', // Consultas de DNI son típicamente EC
+                  parametros: {
+                    contains: filters.parametros,
+                  },
+                },
+              ],
+            },
+          ];
+        } else {
+          // Si es solo números, es probablemente una clave catastral
+          where.AND = [
+            ...(where.AND || []),
+            {
+              OR: [
+                {
+                  parametros: {
+                    contains: filters.parametros,
+                  },
+                },
+                {
+                  consultaType: 'ICS', // Consultas de clave catastral son típicamente ICS
+                  parametros: {
+                    contains: filters.parametros,
+                  },
+                },
+              ],
+            },
+          ];
+        }
+      }
 
       const [logs, total] = await Promise.all([
         this.prisma.consultaLog.findMany({

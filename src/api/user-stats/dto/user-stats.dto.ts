@@ -21,7 +21,11 @@ export class GetUserStatsDto {
   @IsString()
   location?: string;
 
-  @ApiProperty({ enum: StatsTimeRange, required: false, default: StatsTimeRange.MONTH })
+  @ApiProperty({
+    enum: StatsTimeRange,
+    required: false,
+    default: StatsTimeRange.MONTH,
+  })
   @IsOptional()
   @IsEnum(StatsTimeRange)
   timeRange?: StatsTimeRange;
@@ -35,6 +39,49 @@ export class GetUserStatsDto {
   @IsOptional()
   @IsDateString()
   endDate?: string;
+
+  // Nuevos filtros para logs
+  @ApiProperty({ description: 'Tipo de consulta (EC o ICS)', required: false })
+  @IsOptional()
+  @IsString()
+  consultaType?: string;
+
+  @ApiProperty({
+    description: 'Subtipo de consulta (amnistia o normal)',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  consultaSubtype?: string;
+
+  @ApiProperty({ description: 'Nombre de usuario', required: false })
+  @IsOptional()
+  @IsString()
+  username?: string;
+
+  @ApiProperty({
+    description: 'Ubicación del usuario (Mall Premier, etc)',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  userLocation?: string;
+
+  @ApiProperty({
+    description: 'Resultado de la consulta (SUCCESS, ERROR, NOT_FOUND)',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  resultado?: string;
+
+  @ApiProperty({
+    description: 'Parámetros de búsqueda (claveCatastral o dni)',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  parametros?: string;
 }
 
 export class UserStatsResponseDto {
