@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { ReadonlyDatabaseService } from '../../consulta-ec/readonly-database.service';
 import {
   CreateConsultaLogDto,
   ConsultaLogResponseDto,
@@ -22,13 +23,21 @@ import {
   LocationStatsResponseDto,
   GeneralStatsResponseDto,
   StatsTimeRange,
+  GetMatchDto,
+  MatchResponseDto,
+  MatchResultDto,
+  ConsultaLogMatchDto,
+  RecaudoMatchDto,
 } from './dto/user-stats.dto';
 
 @Injectable()
 export class UserStatsService {
   private readonly logger = new Logger(UserStatsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly readonlyDb: ReadonlyDatabaseService,
+  ) {}
 
   // Registrar log de consulta
   async logConsulta(
@@ -1710,6 +1719,239 @@ export class UserStatsService {
         `Error al obtener ubicaciones: ${(error as Error).message}`,
         (error as Error).stack,
       );
+      throw error;
+    }
+  }
+
+  // Método para obtener matches entre consultas y pagos de RECAUDO
+  async getMatches(filters: GetMatchDto): Promise<MatchResponseDto> {
+    try {
+      this.logger.log('Iniciando proceso de match con RECAUDO');
+
+      // 1. Construir filtros para consultas
+      const consultaFilters: any[] = [
+        { resultado: ConsultaResultado.SUCCESS },
+        { parametros: { not: '' } },
+      ];
+
+      // Fecha límite de operación: 19 de agosto 2025
+      const fechaLimiteOperacion = new Date('2025-08-19T00:00:00.000Z');
+
+      // Aplicar filtro de fecha de consulta (por defecto desde 19 agosto 2025)
+      if (filters.consultaStartDate) {
+        consultaFilters.push({
+          createdAt: { gte: new Date(filters.consultaStartDate) },
+        });
+      } else {
+        consultaFilters.push({ createdAt: { gte: fechaLimiteOperacion } });
+      }
+
+      if (filters.consultaEndDate) {
+        consultaFilters.push({
+          createdAt: {
+            lte: new Date(filters.consultaEndDate + 'T23:59:59.999Z'),
+          },
+        });
+      }
+
+      // Aplicar filtro por tipo de consulta
+      if (filters.consultaType) {
+        consultaFilters.push({ consultaType: filters.consultaType });
+      }
+
+      // Obtener consultas SUCCESS de nuestro sistema
+      const consultaLogs = await this.prisma.consultaLog.findMany({
+        where: {
+          AND: consultaFilters,
+        },
+        select: {
+          parametros: true,
+          createdAt: true,
+          totalEncontrado: true,
+          consultaType: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+
+      this.logger.log(`Encontradas ${consultaLogs.length} consultas SUCCESS`);
+
+      // 2. Construir consulta SQL para RECAUDO
+      let whereClause = '';
+      const currentYear = new Date().getFullYear();
+
+      if (filters.startDate && filters.endDate) {
+        whereClause = `WHERE CONVERT(DATE, [FECHA PAGO]) BETWEEN '${filters.startDate}' AND '${filters.endDate}'`;
+      } else if (filters.year) {
+        whereClause = `WHERE [ANIO] = ${filters.year}`;
+      } else {
+        // Por defecto, usar el año actual
+        whereClause = `WHERE [ANIO] = ${currentYear}`;
+      }
+
+      const recaudoQuery = `
+        USE [RECAUDO]
+        SELECT [ARTICULO]
+              ,[IDENTIDAD]
+              ,[FECHA PAGO] as FECHA_PAGO
+              ,[TOTAL PAGADO] as TOTAL_PAGADO
+              ,[ANIO] as ANIO_PAGADO
+        FROM [RECAUDO].[dbo].[TBL_RECAUDO_AMDC]
+        ${whereClause}
+        ORDER BY [FECHA PAGO] DESC
+      `;
+
+      this.logger.log('Ejecutando consulta en base RECAUDO...');
+
+      // 3. Ejecutar consulta en RECAUDO
+      const recaudoData = await this.readonlyDb.executeQuery(recaudoQuery);
+
+      this.logger.log(`Encontrados ${recaudoData.length} registros en RECAUDO`);
+
+      // 4. Crear mapa de artículos de RECAUDO para búsqueda rápida
+      const recaudoMap = new Map<string, any>();
+      recaudoData.forEach((item) => {
+        recaudoMap.set(item.ARTICULO, item);
+      });
+
+      // 5. Buscar matches y clasificar pagos
+      const matches: MatchResultDto[] = [];
+      let sumaTotalEncontrado = 0;
+      let sumaTotalPagado = 0;
+      let totalPagosMedianteApp = 0;
+      let totalPagosPrevios = 0;
+      let sumaTotalPagadoMedianteApp = 0;
+      let sumaTotalPagosPrevios = 0;
+
+      for (const consulta of consultaLogs) {
+        const totalEncontradoNum = consulta.totalEncontrado
+          ? consulta.totalEncontrado.toNumber()
+          : 0;
+        sumaTotalEncontrado += totalEncontradoNum;
+
+        // Extraer el valor del JSON según el tipo de consulta
+        let valorBusqueda = '';
+        try {
+          const parametrosJson = JSON.parse(consulta.parametros);
+
+          // Determinar qué campo usar para buscar en RECAUDO
+          if (parametrosJson.claveCatastral) {
+            valorBusqueda = parametrosJson.claveCatastral;
+          } else if (parametrosJson.dni) {
+            valorBusqueda = parametrosJson.dni;
+          } else if (parametrosJson.ics) {
+            valorBusqueda = parametrosJson.ics;
+          }
+        } catch (error) {
+          this.logger.warn(
+            `Error parsing parametros JSON: ${consulta.parametros}`,
+          );
+          continue;
+        }
+
+        if (!valorBusqueda) {
+          continue;
+        }
+
+        // Buscar match en RECAUDO usando el valor extraído
+        const recaudoMatch = recaudoMap.get(valorBusqueda);
+
+        if (recaudoMatch) {
+          const fechaConsulta = new Date(consulta.createdAt);
+          const fechaPago = new Date(recaudoMatch.FECHA_PAGO);
+          const totalPagado = parseFloat(recaudoMatch.TOTAL_PAGADO) || 0;
+
+          // Determinar si es pago mediante app o pago previo
+          // Si totalEncontrado es 0 y la fecha de pago es anterior o igual a la fecha de consulta,
+          // significa que ya había pagado antes de consultar
+          const esPagoMedianteApp = !(totalEncontradoNum === 0 && fechaPago <= fechaConsulta);
+          const tipoPago = esPagoMedianteApp ? 'pago_mediante_app' : 'pago_previo_consulta';
+
+          matches.push({
+            parametro: consulta.parametros,
+            consultaLog: {
+              parametros: consulta.parametros,
+              createdAt: consulta.createdAt,
+              totalEncontrado: totalEncontradoNum,
+            },
+            recaudoData: {
+              ARTICULO: recaudoMatch.ARTICULO,
+              IDENTIDAD: recaudoMatch.IDENTIDAD,
+              FECHA_PAGO: fechaPago,
+              TOTAL_PAGADO: totalPagado,
+              ANIO_PAGADO: parseInt(recaudoMatch.ANIO_PAGADO) || 0,
+            },
+            tipoPago,
+            esPagoMedianteApp,
+          });
+
+          // Contabilizar según el tipo de pago
+          sumaTotalPagado += totalPagado;
+          if (esPagoMedianteApp) {
+            totalPagosMedianteApp++;
+            sumaTotalPagadoMedianteApp += totalPagado;
+          } else {
+            totalPagosPrevios++;
+            sumaTotalPagosPrevios += totalPagado;
+          }
+
+          this.logger.log(
+            `Match encontrado - Parámetro: ${valorBusqueda}, Consulta: ${fechaConsulta.toISOString()}, Pago: ${fechaPago.toISOString()}, TotalEncontrado: ${totalEncontradoNum}, Tipo: ${tipoPago}`,
+          );
+        }
+      }
+
+      // 6. Determinar período consultado
+      let periodoConsultado = '';
+
+      // Período de pagos en RECAUDO
+      let periodoPagos = '';
+      if (filters.startDate && filters.endDate) {
+        periodoPagos = `Pagos: ${filters.startDate} a ${filters.endDate}`;
+      } else if (filters.year) {
+        periodoPagos = `Pagos: Año ${filters.year}`;
+      } else {
+        periodoPagos = `Pagos: Año ${currentYear}`;
+      }
+
+      // Período de consultas
+      let periodoConsultas = '';
+      if (filters.consultaStartDate && filters.consultaEndDate) {
+        periodoConsultas = `Consultas: ${filters.consultaStartDate} a ${filters.consultaEndDate}`;
+      } else if (filters.consultaStartDate) {
+        periodoConsultas = `Consultas: desde ${filters.consultaStartDate}`;
+      } else {
+        periodoConsultas = 'Consultas: desde 19 agosto 2025';
+      }
+
+      // Tipo de consulta
+      const tipoConsulta = filters.consultaType
+        ? ` (Tipo: ${filters.consultaType})`
+        : ' (Todos los tipos)';
+
+      periodoConsultado = `${periodoPagos} | ${periodoConsultas}${tipoConsulta}`;
+
+      const resultado: MatchResponseDto = {
+        totalConsultasAnalizadas: consultaLogs.length,
+        totalMatches: matches.length,
+        totalPagosMedianteApp,
+        totalPagosPrevios,
+        sumaTotalEncontrado,
+        sumaTotalPagado,
+        sumaTotalPagadoMedianteApp,
+        sumaTotalPagosPrevios,
+        periodoConsultado,
+        matches,
+      };
+
+      this.logger.log(
+        `Match completado: ${matches.length} matches de ${consultaLogs.length} consultas. Pagos mediante app: ${totalPagosMedianteApp}, Pagos previos: ${totalPagosPrevios}`,
+      );
+
+      return resultado;
+    } catch (error) {
+      this.logger.error(`Error en getMatches: ${error.message}`);
       throw error;
     }
   }

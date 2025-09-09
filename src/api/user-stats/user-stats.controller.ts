@@ -36,6 +36,8 @@ import {
   UserStatsResponseDto,
   LocationStatsResponseDto,
   GeneralStatsResponseDto,
+  GetMatchDto,
+  MatchResponseDto,
 } from './dto/user-stats.dto';
 
 @ApiTags('User Stats & Logs')
@@ -176,6 +178,21 @@ export class UserStatsController {
     return this.userStatsService.getUserLocationHistory(userId, options);
   }
 
+  @Get('match')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.USER_ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Obtener matches entre consultas y pagos de RECAUDO',
+    description: 'Compara parámetros de ConsultaLog con ARTICULO de TBL_RECAUDO_AMDC. Solo para ADMIN y USER-ADMIN',
+  })
+  @ApiResponse({ type: MatchResponseDto })
+  async getMatches(
+    @Query() filters: GetMatchDto,
+  ): Promise<MatchResponseDto> {
+    return this.userStatsService.getMatches(filters);
+  }
+
   @Get('users/location-history')
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.USER_ADMIN)
@@ -297,18 +314,15 @@ export class UserStatsController {
     @Query('statsDateFrom') statsDateFrom?: string,
     @Query('statsDateTo') statsDateTo?: string,
   ): Promise<UserLocationHistoryResponseDto> {
-    return this.userStatsService.getUserLocationHistory(
-      req.user.id,
-      {
-        activeOnly,
-        sortOrder,
-        limit,
-        page,
-        includeConsultationStats,
-        statsDateFrom,
-        statsDateTo,
-      },
-    );
+    return this.userStatsService.getUserLocationHistory(req.user.id, {
+      activeOnly,
+      sortOrder,
+      limit,
+      page,
+      includeConsultationStats,
+      statsDateFrom,
+      statsDateTo,
+    });
   }
 
   // Endpoint interno para registrar logs (usado por los servicios de consulta)
