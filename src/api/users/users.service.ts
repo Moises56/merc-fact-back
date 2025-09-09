@@ -192,7 +192,7 @@ export class UsersService {
     if (currentUser) {
       const isAdmin = currentUser.role === 'ADMIN';
       const isOwnProfile = currentUser.id === id;
-      
+
       if (!isAdmin && !isOwnProfile) {
         throw new ForbiddenException(
           'No tienes permisos para actualizar este usuario',
@@ -206,7 +206,7 @@ export class UsersService {
         const hasRestrictedFields = restrictedFields.some((field) =>
           Object.prototype.hasOwnProperty.call(updateUserDto, field),
         );
-        
+
         if (hasRestrictedFields) {
           throw new ForbiddenException(
             'No tienes permisos para actualizar estos campos',
