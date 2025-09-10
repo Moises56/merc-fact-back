@@ -53,44 +53,14 @@ GET /api/user-stats/match
 
 ### Respuesta del Endpoint
 
-La respuesta incluye:
-- `totalConsultasAnalizadas`: Número total de consultas SUCCESS procesadas
-- `totalMatches`: Número de matches encontrados entre consultas y pagos
-- `totalPagosMedianteApp`: Número de pagos realizados mediante la aplicación (después de la consulta)
-- `totalPagosPrevios`: Número de pagos realizados antes de la consulta
-- `sumaTotalEncontrado`: Suma de todos los `totalEncontrado` de las consultas
-- `sumaTotalPagado`: Suma de todos los pagos encontrados en RECAUDO
-- `sumaTotalPagadoMedianteApp`: Suma de pagos realizados mediante la aplicación
-- `sumaTotalPagosPrevios`: Suma de pagos realizados antes de consultar
-- `periodoConsultado`: Descripción del período analizado
-- `matches`: Array con los detalles de cada match encontrado
-
-### Clasificación de Pagos
-
-El sistema ahora clasifica automáticamente los pagos en dos categorías:
-
-1. **Pago mediante aplicación** (`pago_mediante_app`):
-   - El usuario consultó y luego pagó
-   - Se considera cuando `totalEncontrado > 0` O cuando la fecha de pago es posterior a la fecha de consulta
-
-2. **Pago previo a consulta** (`pago_previo_consulta`):
-   - El usuario ya había pagado antes de consultar
-   - Se identifica cuando `totalEncontrado = 0` Y la fecha de pago es anterior o igual a la fecha de consulta
-
-Cada match incluye:
-- `tipoPago`: Tipo de pago ('pago_mediante_app' o 'pago_previo_consulta')
-- `esPagoMedianteApp`: Boolean que indica si fue pago mediante la aplicación
+La respuesta incluye información detallada sobre el período consultado:
 
 ```json
 {
   "totalConsultasAnalizadas": 150,
   "totalMatches": 45,
-  "totalPagosMedianteApp": 30,
-  "totalPagosPrevios": 15,
   "sumaTotalEncontrado": 125000.50,
   "sumaTotalPagado": 98000.25,
-  "sumaTotalPagadoMedianteApp": 75000.00,
-  "sumaTotalPagosPrevios": 23000.25,
   "periodoConsultado": "Pagos: Año 2025 | Consultas: desde 19 agosto 2025 (Tipo: EC)",
   "matches": [...]
 }

@@ -28,6 +28,8 @@ import {
   MatchResultDto,
   ConsultaLogMatchDto,
   RecaudoMatchDto,
+  ArticuloDuplicadoDto,
+  EstadisticasDuplicadosDto,
 } from './dto/user-stats.dto';
 
 @Injectable()
@@ -1447,51 +1449,11 @@ export class UserStatsService {
         };
       }
 
-      // Filtro por parámetros (claveCatastral o dni)
+      // Filtro por parámetros
       if (filters.parametros) {
-        const searchValue = filters.parametros.toLowerCase();
-
-        // Si contiene letras, es probablemente un DNI
-        if (/[a-zA-Z]/.test(searchValue)) {
-          where.AND = [
-            ...(where.AND || []),
-            {
-              OR: [
-                {
-                  parametros: {
-                    contains: filters.parametros,
-                  },
-                },
-                {
-                  consultaType: 'EC', // Consultas de DNI son típicamente EC
-                  parametros: {
-                    contains: filters.parametros,
-                  },
-                },
-              ],
-            },
-          ];
-        } else {
-          // Si es solo números, es probablemente una clave catastral
-          where.AND = [
-            ...(where.AND || []),
-            {
-              OR: [
-                {
-                  parametros: {
-                    contains: filters.parametros,
-                  },
-                },
-                {
-                  consultaType: 'ICS', // Consultas de clave catastral son típicamente ICS
-                  parametros: {
-                    contains: filters.parametros,
-                  },
-                },
-              ],
-            },
-          ];
-        }
+        where.parametros = {
+          contains: filters.parametros,
+        };
       }
 
       const [logs, total] = await Promise.all([
@@ -1782,12 +1744,13 @@ export class UserStatsService {
       const currentYear = new Date().getFullYear();
 
       if (filters.startDate && filters.endDate) {
-        whereClause = `WHERE CONVERT(DATE, [FECHA PAGO]) BETWEEN '${filters.startDate}' AND '${filters.endDate}'`;
+        whereClause = `WHERE CONVERT(DATE, [FECHA PAGO]) BETWEEN '${filters.startDate}' AND '${filters.endDate}' AND [PRODUCTO] IN('Impuesto de Bienes Inmuebles','Volumen de Ventas')`;
       } else if (filters.year) {
-        whereClause = `WHERE [ANIO] = ${filters.year}`;
+        // Convertir año a rango de fechas
+        whereClause = `WHERE CONVERT(DATE, [FECHA PAGO]) BETWEEN '${filters.year}-01-01' AND '${filters.year}-12-31' AND [PRODUCTO] IN('Impuesto de Bienes Inmuebles','Volumen de Ventas')`;
       } else {
-        // Por defecto, usar el año actual
-        whereClause = `WHERE [ANIO] = ${currentYear}`;
+        // Por defecto, usar el año actual como rango de fechas
+        whereClause = `WHERE CONVERT(DATE, [FECHA PAGO]) BETWEEN '${currentYear}-01-01' AND '${currentYear}-12-31' AND [PRODUCTO] IN('Impuesto de Bienes Inmuebles','Volumen de Ventas')`;
       }
 
       const recaudoQuery = `
@@ -1796,9 +1759,9 @@ export class UserStatsService {
               ,[IDENTIDAD]
               ,[FECHA PAGO] as FECHA_PAGO
               ,[TOTAL PAGADO] as TOTAL_PAGADO
-              ,[ANIO] as ANIO_PAGADO
-        FROM [RECAUDO].[dbo].[TBL_RECAUDO_AMDC]
+      FROM [RECAUDO].[dbo].[TBL_RECAUDO_AMDC]
         ${whereClause}
+        GROUP BY ID_PAGO, [ARTICULO], [IDENTIDAD], [FECHA PAGO], [TOTAL PAGADO]
         ORDER BY [FECHA PAGO] DESC
       `;
 
@@ -1809,21 +1772,27 @@ export class UserStatsService {
 
       this.logger.log(`Encontrados ${recaudoData.length} registros en RECAUDO`);
 
-      // 4. Crear mapa de artículos de RECAUDO para búsqueda rápida
-      const recaudoMap = new Map<string, any>();
+      // 4. Crear mapa de artículos de RECAUDO para búsqueda rápida (múltiples pagos por artículo)
+      const recaudoMap = new Map<string, any[]>();
       recaudoData.forEach((item) => {
-        recaudoMap.set(item.ARTICULO, item);
+        const articulo = item.ARTICULO;
+        if (!recaudoMap.has(articulo)) {
+          recaudoMap.set(articulo, []);
+        }
+        recaudoMap.get(articulo)!.push(item);
       });
 
-      // 5. Buscar matches y clasificar pagos
+      // 5. Buscar matches y clasificar pagos (nueva lógica corregida)
       const matches: MatchResultDto[] = [];
+      const matchesUnicos = new Map<string, MatchResultDto>(); // Para deduplicación por artículo
       let sumaTotalEncontrado = 0;
-      let sumaTotalPagado = 0;
-      let totalPagosMedianteApp = 0;
-      let totalPagosPrevios = 0;
-      let sumaTotalPagadoMedianteApp = 0;
-      let sumaTotalPagosPrevios = 0;
 
+      // Mapas para estadísticas de duplicados
+      const articulosConsultados = new Map<string, number>(); // articulo -> veces consultado
+      const articulosConPagos = new Map<string, any[]>(); // articulo -> array de pagos
+      const consultasPorArticulo = new Map<string, any[]>(); // articulo -> array de consultas
+
+      // Procesar todas las consultas para detectar duplicados
       for (const consulta of consultaLogs) {
         const totalEncontradoNum = consulta.totalEncontrado
           ? consulta.totalEncontrado.toNumber()
@@ -1835,14 +1804,13 @@ export class UserStatsService {
         try {
           const parametrosJson = JSON.parse(consulta.parametros);
 
-          // Determinar qué campo usar para buscar en RECAUDO
+          // Determinar qué campo usar para buscar en RECAUDO (solo claveCatastral e ICS)
           if (parametrosJson.claveCatastral) {
             valorBusqueda = parametrosJson.claveCatastral;
-          } else if (parametrosJson.dni) {
-            valorBusqueda = parametrosJson.dni;
           } else if (parametrosJson.ics) {
             valorBusqueda = parametrosJson.ics;
           }
+          // Eliminado soporte para DNI
         } catch (error) {
           this.logger.warn(
             `Error parsing parametros JSON: ${consulta.parametros}`,
@@ -1854,53 +1822,127 @@ export class UserStatsService {
           continue;
         }
 
-        // Buscar match en RECAUDO usando el valor extraído
-        const recaudoMatch = recaudoMap.get(valorBusqueda);
+        // Contar consultas por artículo
+        articulosConsultados.set(valorBusqueda, (articulosConsultados.get(valorBusqueda) || 0) + 1);
+        
+        // Guardar consulta por artículo
+        if (!consultasPorArticulo.has(valorBusqueda)) {
+          consultasPorArticulo.set(valorBusqueda, []);
+        }
+        consultasPorArticulo.get(valorBusqueda)!.push(consulta);
 
-        if (recaudoMatch) {
-          const fechaConsulta = new Date(consulta.createdAt);
-          const fechaPago = new Date(recaudoMatch.FECHA_PAGO);
-          const totalPagado = parseFloat(recaudoMatch.TOTAL_PAGADO) || 0;
+        // Buscar matches en RECAUDO usando el valor extraído
+        const recaudoMatches = recaudoMap.get(valorBusqueda);
 
-          // Determinar si es pago mediante app o pago previo
-          // Si totalEncontrado es 0 y la fecha de pago es anterior o igual a la fecha de consulta,
-          // significa que ya había pagado antes de consultar
-          const esPagoMedianteApp = !(totalEncontradoNum === 0 && fechaPago <= fechaConsulta);
-          const tipoPago = esPagoMedianteApp ? 'pago_mediante_app' : 'pago_previo_consulta';
+        if (recaudoMatches && recaudoMatches.length > 0) {
+          // Guardar pagos por artículo
+          articulosConPagos.set(valorBusqueda, recaudoMatches);
 
-          matches.push({
-            parametro: consulta.parametros,
-            consultaLog: {
-              parametros: consulta.parametros,
-              createdAt: consulta.createdAt,
-              totalEncontrado: totalEncontradoNum,
-            },
-            recaudoData: {
-              ARTICULO: recaudoMatch.ARTICULO,
-              IDENTIDAD: recaudoMatch.IDENTIDAD,
-              FECHA_PAGO: fechaPago,
-              TOTAL_PAGADO: totalPagado,
-              ANIO_PAGADO: parseInt(recaudoMatch.ANIO_PAGADO) || 0,
-            },
-            tipoPago,
-            esPagoMedianteApp,
-          });
+          // Procesar todos los pagos para este artículo
+          for (const recaudoMatch of recaudoMatches) {
+            const fechaConsulta = new Date(consulta.createdAt);
+            const fechaPago = new Date(recaudoMatch.FECHA_PAGO);
+            const totalPagado = parseFloat(recaudoMatch.TOTAL_PAGADO) || 0;
 
-          // Contabilizar según el tipo de pago
-          sumaTotalPagado += totalPagado;
-          if (esPagoMedianteApp) {
-            totalPagosMedianteApp++;
-            sumaTotalPagadoMedianteApp += totalPagado;
-          } else {
-            totalPagosPrevios++;
-            sumaTotalPagosPrevios += totalPagado;
+            // Determinar si es pago mediante app o pago previo
+            const esPagoMedianteApp = !(totalEncontradoNum === 0 && fechaPago <= fechaConsulta);
+            const tipoPago = esPagoMedianteApp ? 'pago_mediante_app' : 'pago_previo_consulta';
+
+            const nuevoMatch: MatchResultDto = {
+              parametro: consulta.parametros,
+              consultaLog: {
+                parametros: consulta.parametros,
+                createdAt: consulta.createdAt,
+                totalEncontrado: totalEncontradoNum,
+              },
+              recaudoData: {
+                ARTICULO: recaudoMatch.ARTICULO,
+                IDENTIDAD: recaudoMatch.IDENTIDAD,
+                FECHA_PAGO: fechaPago,
+                TOTAL_PAGADO: totalPagado,
+                ANIO_PAGADO: fechaPago.getFullYear(),
+              },
+              tipoPago,
+              esPagoMedianteApp,
+            };
+
+            // Lógica de deduplicación: mantener solo el match más reciente por artículo
+            const articuloKey = recaudoMatch.ARTICULO;
+            const matchExistente = matchesUnicos.get(articuloKey);
+            
+            if (!matchExistente || new Date(consulta.createdAt) > new Date(matchExistente.consultaLog.createdAt)) {
+              matchesUnicos.set(articuloKey, nuevoMatch);
+            }
           }
 
           this.logger.log(
-            `Match encontrado - Parámetro: ${valorBusqueda}, Consulta: ${fechaConsulta.toISOString()}, Pago: ${fechaPago.toISOString()}, TotalEncontrado: ${totalEncontradoNum}, Tipo: ${tipoPago}`,
+            `Match encontrado - Parámetro: ${valorBusqueda}, ${recaudoMatches.length} pagos encontrados`,
           );
         }
       }
+
+      // Calcular estadísticas SOLO de los matches únicos finales
+      let sumaTotalPagado = 0;
+      let totalPagosMedianteApp = 0;
+      let totalPagosPrevios = 0;
+      let sumaTotalPagadoMedianteApp = 0;
+      let sumaTotalPagosPrevios = 0;
+
+      for (const match of matchesUnicos.values()) {
+        const totalPagado = match.recaudoData.TOTAL_PAGADO;
+        sumaTotalPagado += totalPagado;
+        
+        if (match.esPagoMedianteApp) {
+          totalPagosMedianteApp++;
+          sumaTotalPagadoMedianteApp += totalPagado;
+        } else {
+          totalPagosPrevios++;
+          sumaTotalPagosPrevios += totalPagado;
+        }
+      }
+
+      // 6. Generar estadísticas de duplicados (SOLO para artículos que hicieron match)
+      const detalleArticulosDuplicados: ArticuloDuplicadoDto[] = [];
+      let totalArticulosDuplicados = 0;
+      let totalArticulosConMultiplesPagos = 0;
+      let totalArticulosUnicosConMatch = 0;
+
+      // Solo procesar artículos que tienen pagos (hicieron match en TBL_RECAUDO_AMDC)
+      for (const [articulo, pagosEncontrados] of articulosConPagos.entries()) {
+        const vecesConsultado = articulosConsultados.get(articulo) || 0;
+        const numerosPagosEncontrados = pagosEncontrados.length;
+        const totalPagadoAcumulado = pagosEncontrados.reduce((sum, pago) => sum + (parseFloat(pago.TOTAL_PAGADO) || 0), 0);
+
+        // Contar todos los artículos que hicieron match
+        totalArticulosUnicosConMatch++;
+
+        // Solo incluir en detalle si se consultaron más de una vez O tienen múltiples pagos
+        if (vecesConsultado > 1 || numerosPagosEncontrados > 1) {
+          detalleArticulosDuplicados.push({
+            articulo,
+            vecesConsultado,
+            numerosPagosEncontrados,
+            totalPagadoAcumulado,
+          });
+
+          if (vecesConsultado > 1) {
+            totalArticulosDuplicados++;
+          }
+          if (numerosPagosEncontrados > 1) {
+            totalArticulosConMultiplesPagos++;
+          }
+        }
+      }
+
+      // Calcular artículos únicos reales (total con match - duplicados)
+      const totalArticulosUnicosReales = totalArticulosUnicosConMatch - totalArticulosDuplicados;
+
+      const estadisticasDuplicados: EstadisticasDuplicadosDto = {
+        totalArticulosUnicos: totalArticulosUnicosReales,
+        totalArticulosDuplicados,
+        totalArticulosConMultiplesPagos,
+        detalleArticulosDuplicados: detalleArticulosDuplicados.sort((a, b) => b.vecesConsultado - a.vecesConsultado),
+      };
 
       // 6. Determinar período consultado
       let periodoConsultado = '';
@@ -1932,9 +1974,12 @@ export class UserStatsService {
 
       periodoConsultado = `${periodoPagos} | ${periodoConsultas}${tipoConsulta}`;
 
+      // Convertir matches únicos de Map a Array
+      const matchesDeduplicados = Array.from(matchesUnicos.values());
+
       const resultado: MatchResponseDto = {
         totalConsultasAnalizadas: consultaLogs.length,
-        totalMatches: matches.length,
+        totalMatches: matchesDeduplicados.length,
         totalPagosMedianteApp,
         totalPagosPrevios,
         sumaTotalEncontrado,
@@ -1942,11 +1987,12 @@ export class UserStatsService {
         sumaTotalPagadoMedianteApp,
         sumaTotalPagosPrevios,
         periodoConsultado,
-        matches,
+        matches: matchesDeduplicados,
+        estadisticasDuplicados,
       };
 
       this.logger.log(
-        `Match completado: ${matches.length} matches de ${consultaLogs.length} consultas. Pagos mediante app: ${totalPagosMedianteApp}, Pagos previos: ${totalPagosPrevios}`,
+        `Match completado: ${matchesDeduplicados.length} matches únicos de ${consultaLogs.length} consultas (eliminados duplicados). Pagos mediante app: ${totalPagosMedianteApp}, Pagos previos: ${totalPagosPrevios}`,
       );
 
       return resultado;

@@ -266,6 +266,34 @@ export class MatchResultDto {
   esPagoMedianteApp: boolean;
 }
 
+export class ArticuloDuplicadoDto {
+  @ApiProperty({ description: 'Artículo (clave catastral, DNI o ICS)' })
+  articulo: string;
+
+  @ApiProperty({ description: 'Número de veces que se repitió en consultas' })
+  vecesConsultado: number;
+
+  @ApiProperty({ description: 'Número de pagos diferentes encontrados para este artículo' })
+  numerosPagosEncontrados: number;
+
+  @ApiProperty({ description: 'Total pagado acumulado para este artículo' })
+  totalPagadoAcumulado: number;
+}
+
+export class EstadisticasDuplicadosDto {
+  @ApiProperty({ description: 'Total de artículos únicos consultados' })
+  totalArticulosUnicos: number;
+
+  @ApiProperty({ description: 'Total de artículos que se consultaron más de una vez' })
+  totalArticulosDuplicados: number;
+
+  @ApiProperty({ description: 'Total de artículos con múltiples pagos en RECAUDO' })
+  totalArticulosConMultiplesPagos: number;
+
+  @ApiProperty({ description: 'Detalle de artículos duplicados', type: [ArticuloDuplicadoDto] })
+  detalleArticulosDuplicados: ArticuloDuplicadoDto[];
+}
+
 export class MatchResponseDto {
   @ApiProperty({ description: 'Total de consultas SUCCESS analizadas' })
   totalConsultasAnalizadas: number;
@@ -293,6 +321,9 @@ export class MatchResponseDto {
 
   @ApiProperty({ description: 'Período consultado' })
   periodoConsultado: string;
+
+  @ApiProperty({ description: 'Estadísticas de artículos duplicados y repetidos', type: EstadisticasDuplicadosDto })
+  estadisticasDuplicados: EstadisticasDuplicadosDto;
 
   @ApiProperty({ description: 'Lista de matches encontrados', type: [MatchResultDto] })
   matches: MatchResultDto[];
