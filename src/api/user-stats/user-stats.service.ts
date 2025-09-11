@@ -59,6 +59,12 @@ export class UserStatsService {
         userLocationId = activeLocation?.id;
       }
 
+      // SOLUCIÓN PARA TIMEZONE: SQL Server está configurado en UTC-6 (Honduras)
+      // Para guardar correctamente en UTC, necesitamos ajustar la fecha
+      const now = new Date();
+      // Agregar 6 horas para compensar el offset de SQL Server
+      const utcTimeForDB = new Date(now.getTime() + 6 * 60 * 60 * 1000);
+
       const log = await this.prisma.consultaLog.create({
         data: {
           consultaType: data.consultaType,
@@ -73,6 +79,7 @@ export class UserStatsService {
           userId: data.userId,
           consultaKey: data.consultaKey,
           userLocationId: userLocationId,
+          createdAt: utcTimeForDB, // Fecha ajustada para compensar timezone de SQL Server
         },
         include: {
           user: {
@@ -1823,8 +1830,11 @@ export class UserStatsService {
         }
 
         // Contar consultas por artículo
-        articulosConsultados.set(valorBusqueda, (articulosConsultados.get(valorBusqueda) || 0) + 1);
-        
+        articulosConsultados.set(
+          valorBusqueda,
+          (articulosConsultados.get(valorBusqueda) || 0) + 1,
+        );
+
         // Guardar consulta por artículo
         if (!consultasPorArticulo.has(valorBusqueda)) {
           consultasPorArticulo.set(valorBusqueda, []);
@@ -1845,8 +1855,14 @@ export class UserStatsService {
             const totalPagado = parseFloat(recaudoMatch.TOTAL_PAGADO) || 0;
 
             // Determinar si es pago mediante app o pago previo
-            const esPagoMedianteApp = !(totalEncontradoNum === 0 && fechaPago <= fechaConsulta);
-            const tipoPago = esPagoMedianteApp ? 'pago_mediante_app' : 'pago_previo_consulta';
+            // Un pago es mediante app cuando:
+            // 1. Había deuda que consultar (totalEncontrado > 0)
+            // 2. El pago se realizó DESPUÉS de la consulta (fechaPago > fechaConsulta)
+            const esPagoMedianteApp =
+              totalEncontradoNum > 0 && fechaPago > fechaConsulta;
+            const tipoPago = esPagoMedianteApp
+              ? 'pago_mediante_app'
+              : 'pago_previo_consulta';
 
             const nuevoMatch: MatchResultDto = {
               parametro: consulta.parametros,
@@ -1869,8 +1885,12 @@ export class UserStatsService {
             // Lógica de deduplicación: mantener solo el match más reciente por artículo
             const articuloKey = recaudoMatch.ARTICULO;
             const matchExistente = matchesUnicos.get(articuloKey);
-            
-            if (!matchExistente || new Date(consulta.createdAt) > new Date(matchExistente.consultaLog.createdAt)) {
+
+            if (
+              !matchExistente ||
+              new Date(consulta.createdAt) >
+                new Date(matchExistente.consultaLog.createdAt)
+            ) {
               matchesUnicos.set(articuloKey, nuevoMatch);
             }
           }
@@ -1891,7 +1911,7 @@ export class UserStatsService {
       for (const match of matchesUnicos.values()) {
         const totalPagado = match.recaudoData.TOTAL_PAGADO;
         sumaTotalPagado += totalPagado;
-        
+
         if (match.esPagoMedianteApp) {
           totalPagosMedianteApp++;
           sumaTotalPagadoMedianteApp += totalPagado;
@@ -1911,7 +1931,10 @@ export class UserStatsService {
       for (const [articulo, pagosEncontrados] of articulosConPagos.entries()) {
         const vecesConsultado = articulosConsultados.get(articulo) || 0;
         const numerosPagosEncontrados = pagosEncontrados.length;
-        const totalPagadoAcumulado = pagosEncontrados.reduce((sum, pago) => sum + (parseFloat(pago.TOTAL_PAGADO) || 0), 0);
+        const totalPagadoAcumulado = pagosEncontrados.reduce(
+          (sum, pago) => sum + (parseFloat(pago.TOTAL_PAGADO) || 0),
+          0,
+        );
 
         // Contar todos los artículos que hicieron match
         totalArticulosUnicosConMatch++;
@@ -1935,13 +1958,16 @@ export class UserStatsService {
       }
 
       // Calcular artículos únicos reales (total con match - duplicados)
-      const totalArticulosUnicosReales = totalArticulosUnicosConMatch - totalArticulosDuplicados;
+      const totalArticulosUnicosReales =
+        totalArticulosUnicosConMatch - totalArticulosDuplicados;
 
       const estadisticasDuplicados: EstadisticasDuplicadosDto = {
         totalArticulosUnicos: totalArticulosUnicosReales,
         totalArticulosDuplicados,
         totalArticulosConMultiplesPagos,
-        detalleArticulosDuplicados: detalleArticulosDuplicados.sort((a, b) => b.vecesConsultado - a.vecesConsultado),
+        detalleArticulosDuplicados: detalleArticulosDuplicados.sort(
+          (a, b) => b.vecesConsultado - a.vecesConsultado,
+        ),
       };
 
       // 6. Determinar período consultado
