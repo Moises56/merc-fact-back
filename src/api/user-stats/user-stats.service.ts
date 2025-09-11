@@ -35,6 +35,8 @@ import {
 @Injectable()
 export class UserStatsService {
   private readonly logger = new Logger(UserStatsService.name);
+  private readonly recaudoCache = new Map<string, { data: any[]; timestamp: number }>();
+  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutos en milisegundos
 
   constructor(
     private readonly prisma: PrismaService,
@@ -1728,24 +1730,6 @@ export class UserStatsService {
         consultaFilters.push({ consultaType: filters.consultaType });
       }
 
-      // Obtener consultas SUCCESS de nuestro sistema
-      const consultaLogs = await this.prisma.consultaLog.findMany({
-        where: {
-          AND: consultaFilters,
-        },
-        select: {
-          parametros: true,
-          createdAt: true,
-          totalEncontrado: true,
-          consultaType: true,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      });
-
-      this.logger.log(`Encontradas ${consultaLogs.length} consultas SUCCESS`);
-
       // 2. Construir consulta SQL para RECAUDO
       let whereClause = '';
       const currentYear = new Date().getFullYear();
@@ -1760,24 +1744,58 @@ export class UserStatsService {
         whereClause = `WHERE CONVERT(DATE, [FECHA PAGO]) BETWEEN '${currentYear}-01-01' AND '${currentYear}-12-31' AND [PRODUCTO] IN('Impuesto de Bienes Inmuebles','Volumen de Ventas')`;
       }
 
+      const recaudoLimit = filters.recaudoLimit || 50000;
       const recaudoQuery = `
         USE [RECAUDO]
-        SELECT [ARTICULO]
+        SELECT TOP ${recaudoLimit} [ARTICULO]
               ,[IDENTIDAD]
               ,[FECHA PAGO] as FECHA_PAGO
               ,[TOTAL PAGADO] as TOTAL_PAGADO
-      FROM [RECAUDO].[dbo].[TBL_RECAUDO_AMDC]
+        FROM [RECAUDO].[dbo].[TBL_RECAUDO_AMDC] WITH (NOLOCK)
         ${whereClause}
         GROUP BY ID_PAGO, [ARTICULO], [IDENTIDAD], [FECHA PAGO], [TOTAL PAGADO]
         ORDER BY [FECHA PAGO] DESC
       `;
 
-      this.logger.log('Ejecutando consulta en base RECAUDO...');
+      this.logger.log('Ejecutando consultas en paralelo...');
 
-      // 3. Ejecutar consulta en RECAUDO
-      const recaudoData = await this.readonlyDb.executeQuery(recaudoQuery);
+      // 3. Verificar caché para consulta RECAUDO
+      const cacheKey = `recaudo_${JSON.stringify({ startDate: filters.startDate, endDate: filters.endDate, year: filters.year })}`;
+      const cachedRecaudo = this.recaudoCache.get(cacheKey);
+      const now = Date.now();
+      
+      let recaudoDataPromise: Promise<any[]>;
+      if (cachedRecaudo && (now - cachedRecaudo.timestamp) < this.CACHE_TTL) {
+        this.logger.log('Usando datos RECAUDO desde caché');
+        recaudoDataPromise = Promise.resolve(cachedRecaudo.data);
+      } else {
+        recaudoDataPromise = this.readonlyDb.executeQuery(recaudoQuery).then(data => {
+          this.recaudoCache.set(cacheKey, { data, timestamp: now });
+          return data;
+        });
+      }
 
-      this.logger.log(`Encontrados ${recaudoData.length} registros en RECAUDO`);
+      // Ejecutar consultas en paralelo para optimizar tiempo
+      const [consultaLogs, recaudoData] = await Promise.all([
+        this.prisma.consultaLog.findMany({
+          where: {
+            AND: consultaFilters,
+          },
+          select: {
+            parametros: true,
+            createdAt: true,
+            totalEncontrado: true,
+            consultaType: true,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+          take: filters.limit || 10000, // Limitar registros según parámetro
+        }),
+        recaudoDataPromise
+      ]);
+
+      this.logger.log(`Encontradas ${consultaLogs.length} consultas SUCCESS y ${recaudoData.length} registros en RECAUDO`);
 
       // 4. Crear mapas de RECAUDO para búsqueda rápida (múltiples pagos por artículo/identidad)
       const recaudoMapArticulo = new Map<string, any[]>(); // Para matching por claveCatastral e ICS
@@ -1820,48 +1838,73 @@ export class UserStatsService {
       let totalMatchesICS = 0;
       let totalMatchesClaveCatastral = 0;
 
-      // Procesar todas las consultas para detectar duplicados
+      // Pre-procesar consultas para optimizar el bucle principal
+      const consultasProcesadas: {
+        consulta: any;
+        valorBusqueda: string;
+        tipoParametro: string;
+        totalEncontradoNum: number;
+      }[] = [];
       for (const consulta of consultaLogs) {
         const totalEncontradoNum = consulta.totalEncontrado
           ? consulta.totalEncontrado.toNumber()
           : 0;
         sumaTotalEncontrado += totalEncontradoNum;
 
-        // Extraer el valor del JSON según el tipo de consulta
+        // Validación temprana de parámetros
+        if (!consulta.parametros || consulta.parametros === '') {
+          continue;
+        }
+
+        // Extraer el valor del JSON según el tipo de consulta (optimizado)
         let valorBusqueda = '';
         let tipoParametro = '';
+        let parametrosJson: any;
+        
         try {
-          const parametrosJson = JSON.parse(consulta.parametros);
-
-          // Determinar qué campo usar para buscar en RECAUDO
-          if (parametrosJson.claveCatastral) {
-            valorBusqueda = parametrosJson.claveCatastral;
-            tipoParametro = 'claveCatastral';
-          } else if (parametrosJson.ics) {
-            valorBusqueda = parametrosJson.ics;
-            tipoParametro = 'ics';
-          } else if (parametrosJson.dni) {
-            valorBusqueda = parametrosJson.dni;
-            tipoParametro = 'dni';
-          }
+          parametrosJson = JSON.parse(consulta.parametros);
         } catch (error) {
-          this.logger.warn(
-            `Error parsing parametros JSON: ${consulta.parametros}`,
-          );
-          continue;
+          continue; // Saltar sin log para mejorar rendimiento
+        }
+
+        // Determinar qué campo usar para buscar en RECAUDO (optimizado)
+        if (parametrosJson.claveCatastral) {
+          valorBusqueda = String(parametrosJson.claveCatastral).trim();
+          tipoParametro = 'claveCatastral';
+        } else if (parametrosJson.ics) {
+          valorBusqueda = String(parametrosJson.ics).trim();
+          tipoParametro = 'ics';
+        } else if (parametrosJson.dni) {
+          valorBusqueda = String(parametrosJson.dni).trim();
+          tipoParametro = 'dni';
         }
 
         if (!valorBusqueda) {
           continue;
         }
 
+        consultasProcesadas.push({
+          consulta,
+          valorBusqueda,
+          tipoParametro,
+          totalEncontradoNum
+        });
+      }
+
+      // Procesar matches de forma optimizada
+      for (const { consulta, valorBusqueda, tipoParametro, totalEncontradoNum } of consultasProcesadas) {
+
         // Incrementar contadores por tipo de parámetro
-        if (tipoParametro === 'dni') {
-          totalConsultasDNI++;
-        } else if (tipoParametro === 'ics') {
-          totalConsultasICS++;
-        } else if (tipoParametro === 'claveCatastral') {
-          totalConsultasClaveCatastral++;
+        switch (tipoParametro) {
+          case 'dni':
+            totalConsultasDNI++;
+            break;
+          case 'ics':
+            totalConsultasICS++;
+            break;
+          case 'claveCatastral':
+            totalConsultasClaveCatastral++;
+            break;
         }
 
         // Contar consultas por artículo
@@ -1877,13 +1920,9 @@ export class UserStatsService {
         consultasPorArticulo.get(valorBusqueda)!.push(consulta);
 
         // Buscar matches en RECAUDO usando el mapa correcto según el tipo de parámetro
-        let recaudoMatches: any[] | undefined;
-        if (tipoParametro === 'dni') {
-          recaudoMatches = recaudoMapIdentidad.get(valorBusqueda);
-        } else {
-          // Para claveCatastral e ICS usar el mapa por artículo
-          recaudoMatches = recaudoMapArticulo.get(valorBusqueda);
-        }
+        const recaudoMatches = tipoParametro === 'dni' 
+          ? recaudoMapIdentidad.get(valorBusqueda)
+          : recaudoMapArticulo.get(valorBusqueda);
 
         if (recaudoMatches && recaudoMatches.length > 0) {
           // Guardar pagos por artículo

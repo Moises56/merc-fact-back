@@ -219,6 +219,24 @@ export class GetMatchDto {
   @IsOptional()
   @IsDateString()
   consultaEndDate?: string;
+
+  @ApiProperty({ 
+    description: 'Límite de consultas a procesar (por defecto 10000)', 
+    required: false,
+    default: 10000
+  })
+  @IsOptional()
+  @Transform(({ value }) => parseInt(value))
+  limit?: number;
+
+  @ApiProperty({ 
+    description: 'Límite de registros RECAUDO a procesar (por defecto 50000)', 
+    required: false,
+    default: 50000
+  })
+  @IsOptional()
+  @Transform(({ value }) => parseInt(value))
+  recaudoLimit?: number;
 }
 
 export class ConsultaLogMatchDto {
