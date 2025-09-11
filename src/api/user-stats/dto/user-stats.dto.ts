@@ -319,6 +319,24 @@ export class MatchResponseDto {
   @ApiProperty({ description: 'Suma total de pagos previos a consultas' })
   sumaTotalPagosPrevios: number;
 
+  @ApiProperty({ description: 'Total de consultas por DNI analizadas' })
+  totalConsultasDNI: number;
+
+  @ApiProperty({ description: 'Total de consultas por ICS analizadas' })
+  totalConsultasICS: number;
+
+  @ApiProperty({ description: 'Total de consultas por clave catastral analizadas' })
+  totalConsultasClaveCatastral: number;
+
+  @ApiProperty({ description: 'Total de matches encontrados por DNI' })
+  totalMatchesDNI: number;
+
+  @ApiProperty({ description: 'Total de matches encontrados por ICS' })
+  totalMatchesICS: number;
+
+  @ApiProperty({ description: 'Total de matches encontrados por clave catastral' })
+  totalMatchesClaveCatastral: number;
+
   @ApiProperty({ description: 'Período consultado' })
   periodoConsultado: string;
 

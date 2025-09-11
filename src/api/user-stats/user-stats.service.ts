@@ -1779,14 +1779,27 @@ export class UserStatsService {
 
       this.logger.log(`Encontrados ${recaudoData.length} registros en RECAUDO`);
 
-      // 4. Crear mapa de artículos de RECAUDO para búsqueda rápida (múltiples pagos por artículo)
-      const recaudoMap = new Map<string, any[]>();
+      // 4. Crear mapas de RECAUDO para búsqueda rápida (múltiples pagos por artículo/identidad)
+      const recaudoMapArticulo = new Map<string, any[]>(); // Para matching por claveCatastral e ICS
+      const recaudoMapIdentidad = new Map<string, any[]>(); // Para matching por DNI
+      
       recaudoData.forEach((item) => {
         const articulo = item.ARTICULO;
-        if (!recaudoMap.has(articulo)) {
-          recaudoMap.set(articulo, []);
+        const identidad = item.IDENTIDAD;
+        
+        // Mapa por ARTICULO (para claveCatastral e ICS)
+        if (!recaudoMapArticulo.has(articulo)) {
+          recaudoMapArticulo.set(articulo, []);
         }
-        recaudoMap.get(articulo)!.push(item);
+        recaudoMapArticulo.get(articulo)!.push(item);
+        
+        // Mapa por IDENTIDAD (para DNI)
+        if (identidad) {
+          if (!recaudoMapIdentidad.has(identidad)) {
+            recaudoMapIdentidad.set(identidad, []);
+          }
+          recaudoMapIdentidad.get(identidad)!.push(item);
+        }
       });
 
       // 5. Buscar matches y clasificar pagos (nueva lógica corregida)
@@ -1798,6 +1811,14 @@ export class UserStatsService {
       const articulosConsultados = new Map<string, number>(); // articulo -> veces consultado
       const articulosConPagos = new Map<string, any[]>(); // articulo -> array de pagos
       const consultasPorArticulo = new Map<string, any[]>(); // articulo -> array de consultas
+      
+      // Contadores por tipo de parámetro
+      let totalConsultasDNI = 0;
+      let totalConsultasICS = 0;
+      let totalConsultasClaveCatastral = 0;
+      let totalMatchesDNI = 0;
+      let totalMatchesICS = 0;
+      let totalMatchesClaveCatastral = 0;
 
       // Procesar todas las consultas para detectar duplicados
       for (const consulta of consultaLogs) {
@@ -1808,16 +1829,21 @@ export class UserStatsService {
 
         // Extraer el valor del JSON según el tipo de consulta
         let valorBusqueda = '';
+        let tipoParametro = '';
         try {
           const parametrosJson = JSON.parse(consulta.parametros);
 
-          // Determinar qué campo usar para buscar en RECAUDO (solo claveCatastral e ICS)
+          // Determinar qué campo usar para buscar en RECAUDO
           if (parametrosJson.claveCatastral) {
             valorBusqueda = parametrosJson.claveCatastral;
+            tipoParametro = 'claveCatastral';
           } else if (parametrosJson.ics) {
             valorBusqueda = parametrosJson.ics;
+            tipoParametro = 'ics';
+          } else if (parametrosJson.dni) {
+            valorBusqueda = parametrosJson.dni;
+            tipoParametro = 'dni';
           }
-          // Eliminado soporte para DNI
         } catch (error) {
           this.logger.warn(
             `Error parsing parametros JSON: ${consulta.parametros}`,
@@ -1827,6 +1853,15 @@ export class UserStatsService {
 
         if (!valorBusqueda) {
           continue;
+        }
+
+        // Incrementar contadores por tipo de parámetro
+        if (tipoParametro === 'dni') {
+          totalConsultasDNI++;
+        } else if (tipoParametro === 'ics') {
+          totalConsultasICS++;
+        } else if (tipoParametro === 'claveCatastral') {
+          totalConsultasClaveCatastral++;
         }
 
         // Contar consultas por artículo
@@ -1841,8 +1876,14 @@ export class UserStatsService {
         }
         consultasPorArticulo.get(valorBusqueda)!.push(consulta);
 
-        // Buscar matches en RECAUDO usando el valor extraído
-        const recaudoMatches = recaudoMap.get(valorBusqueda);
+        // Buscar matches en RECAUDO usando el mapa correcto según el tipo de parámetro
+        let recaudoMatches: any[] | undefined;
+        if (tipoParametro === 'dni') {
+          recaudoMatches = recaudoMapIdentidad.get(valorBusqueda);
+        } else {
+          // Para claveCatastral e ICS usar el mapa por artículo
+          recaudoMatches = recaudoMapArticulo.get(valorBusqueda);
+        }
 
         if (recaudoMatches && recaudoMatches.length > 0) {
           // Guardar pagos por artículo
@@ -1891,7 +1932,22 @@ export class UserStatsService {
               new Date(consulta.createdAt) >
                 new Date(matchExistente.consultaLog.createdAt)
             ) {
+              // Solo incrementar contadores cuando se agrega un match único nuevo
+              // o se reemplaza uno existente por uno más reciente
+              const esNuevoMatch = !matchExistente;
+              
               matchesUnicos.set(articuloKey, nuevoMatch);
+              
+              // Incrementar contadores solo para matches únicos
+              if (esNuevoMatch) {
+                if (tipoParametro === 'dni') {
+                  totalMatchesDNI++;
+                } else if (tipoParametro === 'ics') {
+                  totalMatchesICS++;
+                } else if (tipoParametro === 'claveCatastral') {
+                  totalMatchesClaveCatastral++;
+                }
+              }
             }
           }
 
@@ -2012,6 +2068,12 @@ export class UserStatsService {
         sumaTotalPagado,
         sumaTotalPagadoMedianteApp,
         sumaTotalPagosPrevios,
+        totalConsultasDNI,
+        totalConsultasICS,
+        totalConsultasClaveCatastral,
+        totalMatchesDNI,
+        totalMatchesICS,
+        totalMatchesClaveCatastral,
         periodoConsultado,
         matches: matchesDeduplicados,
         estadisticasDuplicados,
