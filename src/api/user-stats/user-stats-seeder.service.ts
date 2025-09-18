@@ -114,23 +114,25 @@ export class UserStatsSeederService {
         });
 
         // Asignar ubicación al usuario
-        await this.prisma.userLocation.upsert({
+        const existingActiveLocation = await this.prisma.userLocation.findFirst({
           where: {
-            userId_isActive: {
-              userId: user.id,
-              isActive: true,
-            },
-          },
-          update: {},
-          create: {
             userId: user.id,
-            locationName: userData.location.name,
-            locationCode: userData.location.code,
-            description: userData.location.description,
             isActive: true,
-            assignedBy: userAdmin.id,
           },
         });
+
+        if (!existingActiveLocation) {
+          await this.prisma.userLocation.create({
+            data: {
+              userId: user.id,
+              locationName: userData.location.name,
+              locationCode: userData.location.code,
+              description: userData.location.description,
+              isActive: true,
+              assignedBy: userAdmin.id,
+            },
+          });
+        }
 
         this.logger.log(`✅ Usuario ${user.username} creado con ubicación ${userData.location.name}`);
       }

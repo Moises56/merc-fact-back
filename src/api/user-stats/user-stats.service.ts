@@ -35,7 +35,10 @@ import {
 @Injectable()
 export class UserStatsService {
   private readonly logger = new Logger(UserStatsService.name);
-  private readonly recaudoCache = new Map<string, { data: any[]; timestamp: number }>();
+  private readonly recaudoCache = new Map<
+    string,
+    { data: any[]; timestamp: number }
+  >();
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutos en milisegundos
 
   constructor(
@@ -141,32 +144,44 @@ export class UserStatsService {
         throw new Error('Usuario no encontrado');
       }
 
-      // Obtener la ubicación actual antes de cambiarla (para logging)
-      const currentLocation = await this.prisma.userLocation.findFirst({
-        where: {
-          userId: data.userId,
-          isActive: true,
-        },
-      });
-
       const assignmentDate = new Date();
 
       // Usar transacción para garantizar consistencia
-      const location = await this.prisma.$transaction(async (prisma) => {
-        // Eliminar ubicación anterior si existe (en lugar de desactivar)
-        if (currentLocation) {
-          await prisma.userLocation.delete({
+      const result = await this.prisma.$transaction(async (prisma) => {
+        // ESTRATEGIA SIMPLIFICADA PARA HISTORIAL COMPLETO:
+        //
+        // Tu requerimiento: TODAS las ubicaciones anteriores deben estar en historial (isActive: false)
+        // Problema: El constraint @@unique([userId, isActive]) impide múltiples isActive: false
+        //
+        // Solución temporal: Solo desactivar la ubicación activa actual y crear nueva
+        // Nota: Esto funcionará SOLO si no hay múltiples ubicaciones inactivas existentes
+
+        // 1. Buscar ubicación activa actual
+        const currentActiveLocation = await prisma.userLocation.findFirst({
+          where: {
+            userId: data.userId,
+            isActive: true,
+          },
+        });
+
+        let historyAction = 'no-previous-location';
+
+        // 2. Si existe ubicación activa, cambiarla a inactiva (preservar historial)
+        if (currentActiveLocation) {
+          await prisma.userLocation.update({
             where: {
-              id: currentLocation.id,
+              id: currentActiveLocation.id,
+            },
+            data: {
+              isActive: false,
+              updatedAt: assignmentDate,
             },
           });
 
-          this.logger.log(
-            `Ubicación anterior eliminada para usuario ${user.username} (${data.userId}): ${currentLocation.locationName} -> ${data.locationName}`,
-          );
+          historyAction = 'location-moved-to-history';
         }
 
-        // Crear nueva ubicación
+        // 3. Crear nueva ubicación como activa
         const newLocation = await prisma.userLocation.create({
           data: {
             userId: data.userId,
@@ -184,17 +199,23 @@ export class UserStatsService {
           },
         });
 
-        return newLocation;
+        return {
+          newLocation,
+          previousLocation: currentActiveLocation?.locationName,
+          historyAction,
+        };
       });
+
+      const { newLocation: location, previousLocation, historyAction } = result;
 
       // Log del cambio exitoso
       this.logger.log(
-        `Nueva ubicación asignada exitosamente - Usuario: ${user.username} (${data.userId}), Ubicación: ${data.locationName} (${data.locationCode || 'Sin código'}), Asignado por: ${assignedByUserId}`,
+        `Nueva ubicación asignada exitosamente - Usuario: ${user.username} (${data.userId}), Ubicación: ${data.locationName} (${data.locationCode || 'Sin código'}), Asignado por: ${assignedByUserId}, Acción: ${historyAction}`,
       );
 
       // Log para auditoría del historial
       this.logger.log(
-        `HISTORIAL_UBICACION: {"userId":"${data.userId}","username":"${user.username}","previousLocation":"${currentLocation?.locationName || 'Ninguna'}","newLocation":"${data.locationName}","assignedBy":"${assignedByUserId}","timestamp":"${assignmentDate.toISOString()}"}`,
+        `HISTORIAL_UBICACION: {"userId":"${data.userId}","username":"${user.username}","previousLocation":"${previousLocation || 'Ninguna'}","newLocation":"${data.locationName}","historyAction":"${historyAction}","assignedBy":"${assignedByUserId}","timestamp":"${assignmentDate.toISOString()}"}`,
       );
 
       return {
@@ -1763,16 +1784,18 @@ export class UserStatsService {
       const cacheKey = `recaudo_${JSON.stringify({ startDate: filters.startDate, endDate: filters.endDate, year: filters.year })}`;
       const cachedRecaudo = this.recaudoCache.get(cacheKey);
       const now = Date.now();
-      
+
       let recaudoDataPromise: Promise<any[]>;
-      if (cachedRecaudo && (now - cachedRecaudo.timestamp) < this.CACHE_TTL) {
+      if (cachedRecaudo && now - cachedRecaudo.timestamp < this.CACHE_TTL) {
         this.logger.log('Usando datos RECAUDO desde caché');
         recaudoDataPromise = Promise.resolve(cachedRecaudo.data);
       } else {
-        recaudoDataPromise = this.readonlyDb.executeQuery(recaudoQuery).then(data => {
-          this.recaudoCache.set(cacheKey, { data, timestamp: now });
-          return data;
-        });
+        recaudoDataPromise = this.readonlyDb
+          .executeQuery(recaudoQuery)
+          .then((data) => {
+            this.recaudoCache.set(cacheKey, { data, timestamp: now });
+            return data;
+          });
       }
 
       // Ejecutar consultas en paralelo para optimizar tiempo
@@ -1792,25 +1815,27 @@ export class UserStatsService {
           },
           take: filters.limit || 10000, // Limitar registros según parámetro
         }),
-        recaudoDataPromise
+        recaudoDataPromise,
       ]);
 
-      this.logger.log(`Encontradas ${consultaLogs.length} consultas SUCCESS y ${recaudoData.length} registros en RECAUDO`);
+      this.logger.log(
+        `Encontradas ${consultaLogs.length} consultas SUCCESS y ${recaudoData.length} registros en RECAUDO`,
+      );
 
       // 4. Crear mapas de RECAUDO para búsqueda rápida (múltiples pagos por artículo/identidad)
       const recaudoMapArticulo = new Map<string, any[]>(); // Para matching por claveCatastral e ICS
       const recaudoMapIdentidad = new Map<string, any[]>(); // Para matching por DNI
-      
+
       recaudoData.forEach((item) => {
         const articulo = item.ARTICULO;
         const identidad = item.IDENTIDAD;
-        
+
         // Mapa por ARTICULO (para claveCatastral e ICS)
         if (!recaudoMapArticulo.has(articulo)) {
           recaudoMapArticulo.set(articulo, []);
         }
         recaudoMapArticulo.get(articulo)!.push(item);
-        
+
         // Mapa por IDENTIDAD (para DNI)
         if (identidad) {
           if (!recaudoMapIdentidad.has(identidad)) {
@@ -1829,7 +1854,7 @@ export class UserStatsService {
       const articulosConsultados = new Map<string, number>(); // articulo -> veces consultado
       const articulosConPagos = new Map<string, any[]>(); // articulo -> array de pagos
       const consultasPorArticulo = new Map<string, any[]>(); // articulo -> array de consultas
-      
+
       // Contadores por tipo de parámetro
       let totalConsultasDNI = 0;
       let totalConsultasICS = 0;
@@ -1860,7 +1885,7 @@ export class UserStatsService {
         let valorBusqueda = '';
         let tipoParametro = '';
         let parametrosJson: any;
-        
+
         try {
           parametrosJson = JSON.parse(consulta.parametros);
         } catch (error) {
@@ -1887,13 +1912,17 @@ export class UserStatsService {
           consulta,
           valorBusqueda,
           tipoParametro,
-          totalEncontradoNum
+          totalEncontradoNum,
         });
       }
 
       // Procesar matches de forma optimizada
-      for (const { consulta, valorBusqueda, tipoParametro, totalEncontradoNum } of consultasProcesadas) {
-
+      for (const {
+        consulta,
+        valorBusqueda,
+        tipoParametro,
+        totalEncontradoNum,
+      } of consultasProcesadas) {
         // Incrementar contadores por tipo de parámetro
         switch (tipoParametro) {
           case 'dni':
@@ -1920,9 +1949,10 @@ export class UserStatsService {
         consultasPorArticulo.get(valorBusqueda)!.push(consulta);
 
         // Buscar matches en RECAUDO usando el mapa correcto según el tipo de parámetro
-        const recaudoMatches = tipoParametro === 'dni' 
-          ? recaudoMapIdentidad.get(valorBusqueda)
-          : recaudoMapArticulo.get(valorBusqueda);
+        const recaudoMatches =
+          tipoParametro === 'dni'
+            ? recaudoMapIdentidad.get(valorBusqueda)
+            : recaudoMapArticulo.get(valorBusqueda);
 
         if (recaudoMatches && recaudoMatches.length > 0) {
           // Guardar pagos por artículo
@@ -1974,9 +2004,9 @@ export class UserStatsService {
               // Solo incrementar contadores cuando se agrega un match único nuevo
               // o se reemplaza uno existente por uno más reciente
               const esNuevoMatch = !matchExistente;
-              
+
               matchesUnicos.set(articuloKey, nuevoMatch);
-              
+
               // Incrementar contadores solo para matches únicos
               if (esNuevoMatch) {
                 if (tipoParametro === 'dni') {
