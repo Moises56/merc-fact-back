@@ -119,7 +119,7 @@ export class ConsultaEcService {
           INNER JOIN [AMDC].dbo.MI_DESARROLLO_VIVIENDA DV ON DV.ID_DESARROLLO_VIVIENDA = CP.ID_DESARROLLO_VIVIENDA
         WHERE 
           I.ID_PRODUCTO = 15
-          AND O.ANIO BETWEEN 2015 AND 2025
+          AND O.ANIO >= 2015
           AND HART.SN_ACTIVO = 1
           AND (@artIdDoc IS NULL OR AR.NUM_DOCUMENTO = @artIdDoc)
           AND (@actIdCard IS NULL OR A.TXT_IDENTIFICACION = @actIdCard)
