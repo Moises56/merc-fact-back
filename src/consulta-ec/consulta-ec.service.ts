@@ -4,6 +4,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { GetConsultaECDto } from './dto/create-consulta-ec.dto';
 import {
   ConsultaECResponseDto,
@@ -17,13 +18,84 @@ interface CacheEntry {
   timestamp: number;
 }
 
+/**
+ * Configuración de Amnistía Tributaria
+ * Los valores se leen de las variables de entorno (.env)
+ */
+interface AmnistiaConfig {
+  activa: boolean;
+  fechaInicio: string;
+  fechaFin: string;
+  anioDesde: number;
+  anioHasta: number;
+  descripcion: string;
+}
+
 @Injectable()
 export class ConsultaEcService {
   private readonly logger = new Logger(ConsultaEcService.name);
   private readonly cache = new Map<string, CacheEntry>();
   private readonly CACHE_TTL = 10 * 60 * 1000; // 10 minutos
+  private readonly AMNISTIA_CONFIG: AmnistiaConfig;
 
-  constructor(private readonly readonlyDb: ReadonlyDatabaseService) {}
+  constructor(
+    private readonly readonlyDb: ReadonlyDatabaseService,
+    private readonly configService: ConfigService,
+  ) {
+    // Cargar configuración de amnistía desde variables de entorno
+    this.AMNISTIA_CONFIG = {
+      activa: this.configService.get<string>('AMNISTIA_ACTIVA', 'false') === 'true',
+      fechaInicio: this.configService.get<string>('AMNISTIA_FECHA_INICIO', '2025-01-01'),
+      fechaFin: this.configService.get<string>('AMNISTIA_FECHA_FIN', '2025-09-30'),
+      anioDesde: parseInt(this.configService.get<string>('AMNISTIA_ANIO_DESDE', '2016'), 10),
+      anioHasta: parseInt(this.configService.get<string>('AMNISTIA_ANIO_HASTA', '2025'), 10),
+      descripcion: this.configService.get<string>('AMNISTIA_DESCRIPCION', 'Amnistía Tributaria'),
+    };
+
+    // Log del estado de la amnistía
+    if (this.AMNISTIA_CONFIG.activa) {
+      this.logger.log(`✅ Amnistía EC ACTIVA: ${this.AMNISTIA_CONFIG.descripcion}`);
+    } else {
+      this.logger.log('ℹ️ Amnistía EC NO activa - Se aplicarán recargos normales');
+    }
+  }
+
+  /**
+   * Verifica si la amnistía está actualmente vigente
+   */
+  private isAmnistiaVigente(): boolean {
+    if (!this.AMNISTIA_CONFIG.activa) return false;
+    const fechaActual = new Date();
+    const fechaInicio = new Date(this.AMNISTIA_CONFIG.fechaInicio);
+    const fechaFin = new Date(this.AMNISTIA_CONFIG.fechaFin);
+    return fechaActual >= fechaInicio && fechaActual <= fechaFin;
+  }
+
+  /**
+   * Verifica si un año está cubierto por la amnistía
+   */
+  private isAnioCubiertoAmnistia(year: number): boolean {
+    return year >= this.AMNISTIA_CONFIG.anioDesde && year <= this.AMNISTIA_CONFIG.anioHasta;
+  }
+
+  /**
+   * Obtiene el año actual
+   */
+  private getAnioActual(): number {
+    return new Date().getFullYear();
+  }
+
+  /**
+   * Formatea la fecha de fin de amnistía
+   */
+  private formatearFechaAmnistia(): string {
+    const fecha = new Date(this.AMNISTIA_CONFIG.fechaFin);
+    return fecha.toLocaleDateString('es-HN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  }
 
   async getConsultaEC(dto: GetConsultaECDto): Promise<ConsultaECResponseDto> {
     return this.buscarEstadoCuenta(dto, false);
@@ -197,7 +269,7 @@ export class ConsultaEcService {
         recargoNumerico,
         totalNumerico,
         amnistiaAplicada:
-          amnistia && (year < 2025 || (year === 2025 && dias === 0)),
+          amnistia && this.isAmnistiaVigente() && this.isAnioCubiertoAmnistia(year) && year < this.getAnioActual(),
       });
     }
 
@@ -221,8 +293,8 @@ export class ConsultaEcService {
       detallesMora,
       totalGeneral,
       totalGeneralNumerico,
-      amnistiaVigente: amnistia,
-      fechaFinAmnistia: amnistia ? '30/09/2025' : null,
+      amnistiaVigente: amnistia && this.isAmnistiaVigente(),
+      fechaFinAmnistia: this.isAmnistiaVigente() ? this.formatearFechaAmnistia() : null,
       tipoConsulta: 'clave_catastral',
     };
   }
@@ -303,7 +375,7 @@ export class ConsultaEcService {
           recargoNumerico,
           totalNumerico,
           amnistiaAplicada:
-            amnistia && (year < 2025 || (year === 2025 && dias === 0)),
+            amnistia && this.isAmnistiaVigente() && this.isAnioCubiertoAmnistia(year) && year < this.getAnioActual(),
         });
       }
 
@@ -340,8 +412,8 @@ export class ConsultaEcService {
       propiedades,
       totalGeneral,
       totalGeneralNumerico,
-      amnistiaVigente: amnistia,
-      fechaFinAmnistia: amnistia ? '30/09/2025' : null,
+      amnistiaVigente: amnistia && this.isAmnistiaVigente(),
+      fechaFinAmnistia: this.isAmnistiaVigente() ? this.formatearFechaAmnistia() : null,
       tipoConsulta: 'dni',
     };
   }
@@ -349,36 +421,44 @@ export class ConsultaEcService {
   private calcularDiasVencidosConAmnistia(year: string): number {
     if (!year || !/^[0-9]{4}$/.test(year)) return 0;
 
-    const fechaVencimiento = new Date(parseInt(year), 7, 31); // 31 de agosto
-    fechaVencimiento.setHours(0, 0, 0, 0);
-
+    const yearNum = parseInt(year);
     const fechaActual = new Date();
     fechaActual.setHours(0, 0, 0, 0);
+    const anioActual = this.getAnioActual();
 
-    const fechaFinAmnistia = new Date(2025, 8, 30); // 30 de septiembre 2025
+    // Fecha de vencimiento: 31 de agosto del año
+    const fechaVencimiento = new Date(yearNum, 7, 31);
+    fechaVencimiento.setHours(0, 0, 0, 0);
+
+    // Si la amnistía no está activa, calcular días normalmente
+    if (!this.AMNISTIA_CONFIG.activa) {
+      if (fechaActual < fechaVencimiento) return 0;
+      return Math.floor(
+        (fechaActual.getTime() - fechaVencimiento.getTime()) / (1000 * 60 * 60 * 24),
+      );
+    }
+
+    const fechaFinAmnistia = new Date(this.AMNISTIA_CONFIG.fechaFin);
     fechaFinAmnistia.setHours(0, 0, 0, 0);
 
     // Si estamos después de la fecha de fin de amnistía, calcular días normalmente
     if (fechaActual > fechaFinAmnistia) {
       if (fechaActual < fechaVencimiento) return 0;
       return Math.floor(
-        (fechaActual.getTime() - fechaVencimiento.getTime()) /
-          (1000 * 60 * 60 * 24),
+        (fechaActual.getTime() - fechaVencimiento.getTime()) / (1000 * 60 * 60 * 24),
       );
     }
 
-    // Si la amnistía está vigente y el año es anterior a 2025, no hay días vencidos
-    const yearNum = parseInt(year);
-    if (yearNum < 2025) {
+    // Si la amnistía está vigente y el año está cubierto y es anterior al actual, no hay días vencidos
+    if (this.isAnioCubiertoAmnistia(yearNum) && yearNum < anioActual) {
       return 0;
     }
 
-    // Para el año 2025, solo calcular días si ya venció
-    if (yearNum === 2025) {
+    // Para el año actual, calcular días si ya venció
+    if (yearNum === anioActual) {
       if (fechaActual < fechaVencimiento) return 0;
       return Math.floor(
-        (fechaActual.getTime() - fechaVencimiento.getTime()) /
-          (1000 * 60 * 60 * 24),
+        (fechaActual.getTime() - fechaVencimiento.getTime()) / (1000 * 60 * 60 * 24),
       );
     }
 
